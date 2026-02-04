@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>$(MSBuildProjectName)</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OTAPI.Upcoming" Version="3.3.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="TerrariaServer">
+      <HintPath>依赖项\TerrariaServer.dll</HintPath>
+    </Reference>
+    <Reference Include="TShockAPI">
+      <HintPath>依赖项\TShockAPI.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
