@@ -28,78 +28,95 @@ internal class Commands
                 case "p":
                 case "plr":
                     {
-                        if (args.Parameters.Count >= 2)
-                        {
-                            // 导入教学与显示文件
-                            if (args.Parameters[1].Equals("r", StringComparison.OrdinalIgnoreCase))
-                            {
-                                ReaderPlayer.ShowPlrFile(plr);
-
-                                plr.SendMessage($"\n正确使用方法为：", color);
-                                var mess = new StringBuilder();
-                                mess.Append($"对应存档给所有玩家：/{CmdName} plr all r\n");
-                                mess.Append($"对应存档给对应玩家：/{CmdName} plr 存档名 r\n");
-                                mess.Append($"指定存档给指定玩家：/{CmdName} plr 存档名 玩家名 r\n");
-                                mess.Append($"玩家不存在则自动创建账号,密码为{Config.DefPass}\n");
-                                mess.Append($"注:存档名不需要写.plr后缀,只需写文件名即可");
-                                GradMess(plr, mess);
-                                return;
-                            }
-
-                            // 全部导入导出
-                            if (args.Parameters[1].Equals("all", StringComparison.OrdinalIgnoreCase))
-                            {
-                                if (args.Parameters.Count > 2 && args.Parameters.Contains("r"))
-                                    ReaderPlayer.ReadPlayer(plr);
-                                else
-                                    WritePlayer.ExportAll(plr, WritePlrDir);
-
-                                return;
-                            }
-
-                            // 导出指定玩家
-                            if (!args.Parameters.Contains("r"))
-                            {
-                                string plrName = args.Parameters[1];
-                                WritePlayer.ExportPlayer(plrName, plr, WritePlrDir);
-                            }
-                            else if (args.Parameters.Count >= 2 && 3 < args.Parameters.Count)
-                            {
-                                // 把存档导入给对应玩家:/pout plr 存档名 r
-                                var file = args.Parameters[1] + ".plr";
-                                var plrName = args.Parameters[2];
-                                var plrFile = Path.Combine(ReaderPlrDir, file);
-                                ReaderPlayer.ReadPlayer(plr, plrName, plrFile);
-                            }
-                            else if (args.Parameters.Count >= 3)
-                            {
-                                // 获取发送指令者的UUID,给帮注册的人,避免空UUID无法登录
-                                ReaderPlayer.newUUID = plr.UUID;
-
-                                // 把存档导入给指定玩家:/pout plr 存档名 玩家名
-                                // 玩家如果不存在则自动为他注册,并设置密码为123456
-                                var file = args.Parameters[1] + ".plr";
-                                var plrFile = Path.Combine(ReaderPlrDir, file);
-                                ReaderPlayer.ReadPlayer(plr, plrFile);
-                            }
-                        }
-                        else
+                        if (args.Parameters.Count < 2)
                         {
                             var mess = new StringBuilder();
                             mess.Append("\n使用方法:");
                             mess.Append("\n------导出-----\n");
-                            mess.Append($"导出所有玩家：/{CmdName} plr all\n");
-                            mess.Append($"导出指定玩家：/{CmdName} plr 玩家名\n");
-                            mess.Append($"导出指定玩家：/{CmdName} plr 账号id\n");
+                            mess.Append($"导出所有玩家：/{CmdName} p all\n");
+                            mess.Append($"导出指定玩家：/{CmdName} p 玩家名\n");
+                            mess.Append($"导出指定玩家：/{CmdName} p 账号id\n");
                             mess.Append($"账号查询指令：/who -i ");
                             mess.Append("\n------导入-----\n");
-                            mess.Append($"列出所有.plr存档：/{CmdName} plr r\n");
-                            mess.Append($"对应存档给所有玩家：/{CmdName} plr all r\n");
-                            mess.Append($"对应存档给对应玩家：/{CmdName} plr 存档名 r\n");
-                            mess.Append($"指定存档给指定玩家：/{CmdName} plr 存档名 玩家名 r\n");
+                            mess.Append($"列出所有.plr存档：/{CmdName} p r\n");
+                            mess.Append($"对应存档给所有玩家：/{CmdName} p all r\n");
+                            mess.Append($"对应存档给对应玩家：/{CmdName} p 存档索引 r\n");
+                            mess.Append($"指定存档给指定玩家：/{CmdName} p 存档索引 玩家名 r\n");
                             mess.Append($"玩家不存在则自动创建账号,密码为{Config.DefPass}\n");
-                            mess.Append($"注:存档名不需要写.plr后缀,只需写文件名即可");
+                            mess.Append($"注:存档索引是显示文件列表中的序号");
                             GradMess(plr, mess);
+                            return;
+                        }
+
+                        // 显示存档列表
+                        if (args.Parameters[1].ToLower() == "r")
+                        {
+                            ReaderPlayer.ShowPlrFile(plr);
+
+                            plr.SendMessage($"\n正确使用方法为：", color);
+                            var mess = new StringBuilder();
+                            mess.Append($"对应存档给所有玩家：/{CmdName} p all r\n");
+                            mess.Append($"对应存档给对应玩家：/{CmdName} p 存档索引 r\n");
+                            mess.Append($"指定存档给指定玩家：/{CmdName} p 存档索引 玩家名 r\n");
+                            mess.Append($"玩家不存在则自动创建账号,密码为{Config.DefPass}\n");
+                            mess.Append($"注:存档索引是显示文件列表中的序号");
+                            GradMess(plr, mess);
+                            return;
+                        }
+
+                        // 处理 all 参数
+                        if (args.Parameters[1].ToLower() == "all")
+                        {
+                            if (args.Parameters.Count > 2 && args.Parameters[2].ToLower() == "r")
+                                ReaderPlayer.ReadPlayer(plr);
+                            else
+                                WritePlayer.ExportAll(plr, WritePlrDir);
+                            return;
+                        }
+
+                        // 如果不包含 r 参数（导入操作）
+                        if (!args.Parameters.Any(p => p.ToLower() == "r"))
+                        {
+                            // 导出指定玩家
+                            string plrName = args.Parameters[1];
+                            WritePlayer.ExportPlayer(plrName, plr, WritePlrDir);
+                        }
+                        else
+                        {
+                            // 导入操作
+                            if (args.Parameters.Count == 3)
+                            {
+                                // 格式: /pout plr 存档索引 r
+                                if (!int.TryParse(args.Parameters[1], out int fileIdx))
+                                {
+                                    plr.SendErrorMessage("错误：存档索引必须是数字！");
+                                    plr.SendMessage($"正确格式：/{CmdName} p 1 r", color);
+                                    return;
+                                }
+
+                                ReaderPlayer.ReadPlayerByIndex(plr, fileIdx);
+                            }
+                            else if (args.Parameters.Count == 4)
+                            {
+                                // 格式: /pout plr 存档索引 玩家名 r
+                                if (!int.TryParse(args.Parameters[1], out int fileIdx))
+                                {
+                                    plr.SendErrorMessage("错误：存档索引必须是数字！");
+                                    plr.SendMessage($"正确格式：/{CmdName} p 1 玩家名 r", color);
+                                    return;
+                                }
+
+                                // 获取发送指令者的UUID,给帮注册的人,避免空UUID无法登录
+                                ReaderPlayer.newUUID = plr.UUID;
+                                var plrName = args.Parameters[2];
+                                ReaderPlayer.ReadPlayerByIndex(plr, fileIdx, plrName);
+                            }
+                            else
+                            {
+                                plr.SendErrorMessage("参数错误！正确格式：");
+                                plr.SendMessage($"/{CmdName} p 存档索引 r", color);
+                                plr.SendMessage($"/{CmdName} p 存档索引 玩家名 r", color);
+                            }
                         }
                     }
                     break;
@@ -175,6 +192,11 @@ internal class Commands
                     AutoSave(args,plr);
                     break;
 
+                case "进度锁":
+                case "boss":
+                    ProgressLock(args, plr);
+                    break;
+
                 case "重置":
                 case "rs":
                 case "reset":
@@ -209,10 +231,11 @@ internal class Commands
             mess.AppendLine($"/{CmdName} rm ——删除文件");
             mess.AppendLine($"/{CmdName} sql ——改数据表");
             mess.AppendLine($"/{CmdName} cmd ——执行指令");
-            mess.AppendLine($"/{CmdName} reg ——自动注册开关");
+            mess.AppendLine($"/{CmdName} reg ——自动注册");
             mess.AppendLine($"/{CmdName} add ——批量加权限");
             mess.AppendLine($"/{CmdName} del ——批量删权限");
             mess.AppendLine($"/{CmdName} lpm ——导出权限表");
+            mess.AppendLine($"/{CmdName} boss ——人数进度锁");
             mess.AppendLine($"/{CmdName} reset ——重置服务器");
             GradMess(plr, mess);
         }
@@ -233,11 +256,13 @@ internal class Commands
                             $"/{CmdName} add ——批量加权限\n" +
                             $"/{CmdName} del ——批量删权限\n" +
                             $"/{CmdName} lpm ——导出权限表\n" +
+                            $"/{CmdName} boss ——人数进度锁\n" +
                             $"/{CmdName} reset ——重置服务器", color);
         }
 
-        var AutoRegister = Config.AutoRegister ? "已开启" : "已禁用";
-        plr.SendMessage(TextGradient($"自动注册:{AutoRegister} 默认:{Config.DefPass}"), color);
+        var AutoBoss = Config.ProgressLock ? "已开启" : "已禁用";
+        var PlayerCount = TShock.Utils.GetActivePlayerCount();
+        plr.SendMessage(TextGradient($"进度锁:{AutoBoss} 人数:{PlayerCount}/{Config.UnLockCount}人"), color);
         var AutoSave = Config.AutoSavePlayer ? "已开启" : "已禁用";
         plr.SendMessage(TextGradient($"自动备份:{AutoSave} 间隔:{Config.AutoSaveInterval}分钟"), color);
         var GameVersion = Config.GameVersion == -1 ? GameVersionID.Latest : Config.GameVersion;
@@ -336,6 +361,36 @@ internal class Commands
     }
     #endregion
 
+    #region 人数进度锁指令
+    private static void ProgressLock(CommandArgs args, TSPlayer plr)
+    {
+        if (args.Parameters.Count < 2)
+        {
+            Config.ProgressLock = !Config.ProgressLock;
+            Config.Write();
+            var state = Config.ProgressLock ? "开启" : "关闭";
+            plr.SendMessage($"人数进度锁已切换为 {state}", color);
+            plr.SendMessage($"改解锁人数: /{CmdName} boss 人数", color);
+            return;
+        }
+
+        // 人数足够 不阻止
+        int PlayerCount = TShock.Utils.GetActivePlayerCount();
+
+        if (!int.TryParse(args.Parameters[1], out int count))
+        {
+            plr.SendMessage($"请输入正确数字 如:/{CmdName} boss 3", color);
+            plr.SendMessage($"当前为{PlayerCount}/{Config.UnLockCount}人", color2);
+            return;
+        }
+
+        var oldCount = Config.UnLockCount;
+        Config.UnLockCount = count;
+        Config.Write();
+        plr.SendMessage($"解锁人数已从 {oldCount} => {count}人", color);
+    }
+    #endregion
+
     #region 自动备份修改指令
     private static void AutoSave(CommandArgs args, TSPlayer plr)
     {
@@ -351,7 +406,7 @@ internal class Commands
 
         if (!int.TryParse(args.Parameters[1], out int time))
         {
-            plr.SendMessage($"请输入正确数字 如:/pout save 30", color);
+            plr.SendMessage($"请输入正确数字 如:/{CmdName} save 30", color);
             plr.SendMessage($"当前为{Config.AutoSaveInterval}分钟", color2);
             return;
         }
@@ -359,7 +414,7 @@ internal class Commands
         var oldtime = Config.AutoSaveInterval;
         Config.AutoSaveInterval = time;
         Config.Write();
-        plr.SendMessage($"自动备份间隔已经从 {oldtime} => {time}分钟", color);
+        plr.SendMessage($"自动备份间隔已从 {oldtime} => {time}分钟", color);
     }
     #endregion
 
@@ -1115,6 +1170,10 @@ internal class Commands
         WritePlayer.ExportAll(plr, WritePlrDir);
         DoCommand(plr, Config.BeforeCMD);
         ClearSql(plr);
+
+        // 重置进度锁
+        Config.UnLockNpc.Clear();
+        Config.Write();
 
         Main.WorldFileMetadata = null; // 清除缓存的世界元数据 确保完成删除地图
         Main.gameMenu = true; // 回到主菜单

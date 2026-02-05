@@ -1,4 +1,5 @@
-﻿using Terraria;
+﻿using System.Collections.Concurrent;
+using Terraria;
 using Terraria.ID;
 using Terraria.Net;
 using TerrariaApi.Server;
@@ -15,7 +16,7 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 2, 4, 2);
+    public override Version Version => new(2026, 2, 5, 1);
     public override string Description => "本插件仅TShock测试版期间维护,指令/pout";
     #endregion
 
@@ -33,6 +34,8 @@ public partial class FixTools : TerrariaPlugin
     public static readonly string MapDir = Path.Combine(MainPath, "重置时用的复制地图"); // 复制地图路径
     public static readonly string WldDir = Path.Combine(typeof(TShock).Assembly.Location, "world"); // 加载地图路径
     public static readonly string StartConfigPath = Path.Combine(typeof(TShock).Assembly.Location, "server.properties"); // 启动参数路径
+    // 存储需要恢复存档的玩家数据,用于死亡复活后或死亡退出回服后恢复存档（键：玩家名，值：PlayerData）
+    public static ConcurrentDictionary<string, PlayerData> NeedRestores = new();
     #endregion
 
     #region 注册与释放
@@ -67,6 +70,9 @@ public partial class FixTools : TerrariaPlugin
         GetDataHandlers.PlayerUpdate.Register(this.OnPlayerUpdate);
         ServerApi.Hooks.NetGetData.Register(this, OnNetGetData);
         ServerApi.Hooks.GameUpdate.Register(this, OnGameUpdate);
+        ServerApi.Hooks.NpcAIUpdate.Register(this, OnNpcAIUpdate);
+        ServerApi.Hooks.NpcStrike.Register(this, OnNPCStrike);
+        ServerApi.Hooks.NpcKilled.Register(this, OnNPCKilled);
         TShockAPI.Commands.ChatCommands.Add(new Command($"{CmdName}.use", Commands.pout, CmdName));
     }
 
@@ -82,6 +88,9 @@ public partial class FixTools : TerrariaPlugin
             GetDataHandlers.PlayerUpdate.UnRegister(this.OnPlayerUpdate);
             ServerApi.Hooks.NetGetData.Deregister(this, OnNetGetData);
             ServerApi.Hooks.GameUpdate.Deregister(this, OnGameUpdate);
+            ServerApi.Hooks.NpcAIUpdate.Deregister(this, OnNpcAIUpdate);
+            ServerApi.Hooks.NpcStrike.Deregister(this, OnNPCStrike);
+            ServerApi.Hooks.NpcKilled.Deregister(this, OnNPCKilled);
             TShockAPI.Commands.ChatCommands.RemoveAll(x => x.CommandDelegate == Commands.pout);
         }
         base.Dispose(disposing);
@@ -111,7 +120,7 @@ public partial class FixTools : TerrariaPlugin
         TShock.Log.ConsoleInfo($"1.导入或导出玩家强制开荒存档、自动备份存档");
         TShock.Log.ConsoleInfo($"2.自动注册、跨版本进服、修复地图区块缺失");
         TShock.Log.ConsoleInfo($"3.批量改权限、导出权限表、批量删文件、复制文件");
-        TShock.Log.ConsoleInfo($"4.进服公告、自动建GM组、自动配权、重置服务器数据");
+        TShock.Log.ConsoleInfo($"4.进服公告、自动建GM组、自动配权、进度锁、重置服务器");
         TShock.Log.ConsoleInfo($"指令/{CmdName} 权限:{CmdName}.use");
         TShock.Log.ConsoleInfo($"显示重置服务器流程: /{CmdName} reset");
         TShock.Log.ConsoleInfo($"显示修复地图区块缺失流程: /{CmdName} fix");
@@ -235,6 +244,7 @@ public partial class FixTools : TerrariaPlugin
 
         if (plr.GetData<bool>("Register"))
             plr.RemoveData("Register");
+        
     }
     #endregion
 
@@ -264,6 +274,20 @@ public partial class FixTools : TerrariaPlugin
 
             plr.SendMessage(TextGradient(regText), color);
             plr.RemoveData("Register");
+        }
+
+        // 检查是否需要恢复存档（玩家复活后）
+        if (NeedRestores.TryGetValue(plr.Name, out var data) && !plr.Dead)
+        {
+            try
+            {
+                data?.RestoreCharacter(plr);
+                plr.SendMessage($"已自动为你恢复存档物品!", color);
+            }
+            finally
+            {
+                NeedRestores.TryRemove(plr.Name, out _);
+            }
         }
     }
     #endregion
@@ -322,4 +346,73 @@ public partial class FixTools : TerrariaPlugin
     }
     #endregion
 
+    #region 人数进度锁
+    private void OnNpcAIUpdate(NpcAiUpdateEventArgs args)
+    {
+        var npc = args.Npc;
+        if (!Config.ProgressLock || npc is null || !npc.active ||
+            Config.UnLockNpc.Contains(npc.FullName))
+            return;
+
+        // 人数足够 不阻止
+        int PlayerCount = TShock.Utils.GetActivePlayerCount();
+        if (PlayerCount >= Config.UnLockCount)
+            return;
+
+        if (Config.LockNpc.Contains(npc.FullName))
+        {
+            npc.active = false;
+            npc.type = 0;
+            npc.netUpdate = true;
+            TShock.Utils.Broadcast($"在线人数不足:{PlayerCount}/{Config.UnLockCount}人," +
+                                   $"禁止召唤:{npc.FullName}", color);
+
+            TSPlayer.All.SendData(PacketTypes.NpcUpdate, "", npc.whoAmI);
+            args.Handled = true;
+        }
+    }
+
+    private void OnNPCStrike(NpcStrikeEventArgs args)
+    {
+        var npc = args.Npc;
+        if (!Config.ProgressLock || npc is null || !npc.active ||
+            Config.UnLockNpc.Contains(npc.FullName))
+            return;
+
+        // 人数足够 不阻止
+        int PlayerCount = TShock.Utils.GetActivePlayerCount();
+        if (PlayerCount >= Config.UnLockCount) return;
+
+        if (Config.LockNpc.Contains(npc.FullName))
+        {
+            npc.active = false;
+            npc.type = 0;
+            npc.netUpdate = true;
+            TShock.Utils.Broadcast($"在线人数不足:{PlayerCount}/{Config.UnLockCount}人," +
+                                   $"禁止召唤:{npc.FullName}", color);
+
+            TSPlayer.All.SendData(PacketTypes.NpcUpdate, "", npc.whoAmI);
+            args.Handled = true;
+        }
+    }
+
+    private void OnNPCKilled(NpcKilledEventArgs args)
+    {
+        var npc = args.npc;
+        if (!Config.ProgressLock || npc is null || !npc.active ||
+            Config.UnLockNpc.Contains(npc.FullName))
+            return;
+
+        // 人数不够不解锁
+        int PlayerCount = TShock.Utils.GetActivePlayerCount();
+        if (PlayerCount < Config.UnLockCount) return;
+
+        // 杀过一次就解锁
+        if (Config.LockNpc.Contains(npc.FullName))
+        {
+            Config.UnLockNpc.Add(npc.FullName);
+            Config.Write();
+        }
+    }
+    #endregion
 }

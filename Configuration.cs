@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
-using TerrariaApi.Server;
-using TShockAPI;
+using Terraria;
+using Terraria.ID;
 using static FixTools.FixTools;
 
 namespace FixTools;
@@ -42,17 +42,27 @@ internal class Configuration
     [JsonProperty("进服公告", Order = 14)]
     public HashSet<string> MotdMess { get; set; } = [];
 
-    [JsonProperty("开服后执行指令", Order = 15)]
+    [JsonProperty("开服后执行指令", Order = 19)]
     public HashSet<string> PostCMD = [];
-    [JsonProperty("游戏时执行指令", Order = 16)]
+    [JsonProperty("游戏时执行指令", Order = 20)]
     public HashSet<string> GameCMD = [];
-    [JsonProperty("重置后执行指令", Order = 17)]
+    [JsonProperty("重置后执行指令", Order = 21)]
     public HashSet<string> AfterCMD = [];
-    [JsonProperty("重置前执行指令", Order = 18)]
+    [JsonProperty("重置前执行指令", Order = 22)]
     public HashSet<string> BeforeCMD = [];
-    [JsonProperty("开服自动配权", Order = 19)]
+
+    [JsonProperty("人数进度锁", Order = 30)]
+    public bool ProgressLock { get; set; } = true;
+    [JsonProperty("解锁人数", Order = 31)]
+    public int UnLockCount { get; set; } = 3;
+    [JsonProperty("已解锁怪物", Order = 32)]
+    public HashSet<string> UnLockNpc = new HashSet<string>();
+    [JsonProperty("进度锁怪物", Order = 33)]
+    public HashSet<string> LockNpc = new HashSet<string>();
+
+    [JsonProperty("开服自动配权", Order = 40)]
     public bool AutoPerm { get; set; } = true;
-    [JsonProperty("批量改权限", Order = 20)]
+    [JsonProperty("批量改权限", Order = 41)]
     public Dictionary<string, HashSet<string>> Permission = [];
 
     #region 预设参数方法
@@ -66,13 +76,19 @@ internal class Configuration
             "1.4.4   : 279"
         ];
 
+        LockNpc = SetNpcByID();
+
         MotdMess =
         [
-            "\n[本插件支持以下功能] 适配版本号:d87ffba",
+            "\n[本插件支持以下功能] 适配版本号:ab1208c",
             "1.导入或导出玩家强制开荒存档、自动备份存档",
             "2.自动注册、跨版本进服、修复地图区块缺失",
             "3.批量改权限、导出权限表、批量删文件、复制文件",
-            "4.进服公告、自动建GM组、自动配权、重置服务器",
+            "4.进服公告、自动建GM组、自动配权、进度锁、重置服务器",
+
+            "\n《如出现因为施加buff给npc被踢出》",
+            "可将玩家提升到vip组 /user group 玩家名 vip",
+            "请自行甄别玩家是否开挂,否则后果自负",
 
             "\n欢迎来到泰拉瑞亚 1.4.5.3 服务器",
             "TShock官方Q群:816771079",
@@ -80,14 +96,10 @@ internal class Configuration
            $"配置文件路径: tshock/{PluginName}/配置文件.json",
 
             "\n已根据配置自动批量添加组权限",
-            "如果不需要可批量移除:/pout del",
-            "显示重置服务器流程:/pout reset",
-            "显示修复地图区块缺失流程:/pout fix",
-            "在控制台指定管理:/user group 玩家名 GM",
-
-            "\n《如出现因为施加buff给npc被踢出》",
-            "可将玩家提升到vip组 /user group 玩家名 vip",
-            "请自行甄别玩家是否开挂,否则后果自负",
+            "不需可批量移除:/pout del",
+            "人数进度锁开关:/pout boss",
+            "重置服务器流程:/pout reset",
+            "控制台指定管理:/user group 玩家名 GM",
            $"\n[{PluginName}] 祝您游戏愉快!!  by羽学\n",
         ];
 
@@ -194,10 +206,65 @@ internal class Configuration
             "在线礼包","免拦截","死者复生",
         ];
 
-        Permission["vip"] = 
+        Permission["vip"] =
         [
             "tshock.ignore.npcbuff"
         ];
+    }
+    #endregion
+
+    #region 设置锁定NPC方法
+    public HashSet<string> SetNpcByID()
+    {
+        var NewNpc = new HashSet<string>();
+
+        foreach (var item in SetLockNpc())
+        {
+            var name = Lang.GetNPCNameValue(item);
+            if (NewNpc.Contains(name)) continue;
+            NewNpc.Add(name);
+        }
+
+        return NewNpc;
+    }
+
+    public HashSet<int> SetLockNpc()
+    {
+        var NewNpc = new HashSet<int>()
+        {
+            NPCID.EyeofCthulhu, NPCID.EaterofWorldsHead,
+            NPCID.EaterofWorldsBody,  NPCID.EaterofWorldsTail,
+            NPCID.SkeletronHead, NPCID.SkeletronHand, NPCID.KingSlime,
+            NPCID.WallofFlesh, NPCID.WallofFleshEye,
+            NPCID.TheHungry,NPCID.TheHungryII,
+            NPCID.Retinazer, NPCID.Spazmatism,
+            NPCID.BloodNautilus,NPCID.GoblinShark,
+            NPCID.BloodEelHead,NPCID.BloodEelBody,NPCID.BloodEelTail,
+            NPCID.SkeletronPrime, NPCID.PrimeCannon,
+            NPCID.PrimeSaw,NPCID.PrimeVice, NPCID.PrimeLaser,
+            NPCID.TheDestroyer, NPCID.TheDestroyerBody,
+            NPCID.TheDestroyerTail,NPCID.Probe,NPCID.PirateCaptain,
+            NPCID.QueenBee, NPCID.Golem, NPCID.GolemHead,
+            NPCID.GolemFistLeft, NPCID.GolemFistRight,
+            NPCID.GolemHeadFree, NPCID.Plantera,
+            NPCID.PlanterasTentacle,NPCID.BrainofCthulhu,
+            NPCID.Creeper,NPCID.DukeFishron,NPCID.GoblinSummoner,
+            NPCID.MartianSaucer,NPCID.MartianSaucerTurret,
+            NPCID.MartianSaucerCannon,NPCID.MartianSaucerCore,
+            NPCID.MoonLordHead, NPCID.MoonLordHand,
+            NPCID.MoonLordCore, NPCID.MoonLordFreeEye,
+            NPCID.MoonLordLeechBlob, NPCID.CultistBoss,
+            NPCID.CultistBossClone, NPCID.LunarTowerVortex,
+            NPCID.PirateShip,NPCID.PirateShipCannon,
+            NPCID.LunarTowerStardust,NPCID.LunarTowerNebula,
+            NPCID.DD2Betsy,NPCID.DD2DarkMageT1,NPCID.DD2DarkMageT3,
+            NPCID.LunarTowerSolar,NPCID.HallowBoss,
+            NPCID.DD2OgreT2,NPCID.DD2OgreT3,
+            NPCID.QueenSlimeBoss, NPCID.Deerclops,
+
+        };
+
+        return NewNpc;
     }
     #endregion
 
