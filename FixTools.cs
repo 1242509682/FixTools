@@ -118,17 +118,12 @@ public partial class FixTools : TerrariaPlugin
         Console.WriteLine(string.Empty);
         Console.WriteLine($"[本插件支持]");
         TShock.Log.ConsoleInfo($"1.导入或导出玩家强制开荒存档、自动备份存档");
-        TShock.Log.ConsoleInfo($"2.自动注册、跨版本进服、修复地图区块缺失");
+        TShock.Log.ConsoleInfo($"2.进服公告、跨版本进服、自动修复地图区块缺失");
         TShock.Log.ConsoleInfo($"3.批量改权限、导出权限表、批量删文件、复制文件");
-        TShock.Log.ConsoleInfo($"4.进服公告、自动建GM组、自动配权、进度锁、重置服务器");
+        TShock.Log.ConsoleInfo($"4.自动注册、自动建GM组、自动配权、进度锁、重置服务器");
         TShock.Log.ConsoleInfo($"指令/{CmdName} 权限:{CmdName}.use");
         TShock.Log.ConsoleInfo($"显示重置服务器流程: /{CmdName} reset");
-        TShock.Log.ConsoleInfo($"显示修复地图区块缺失流程: /{CmdName} fix");
-        TShock.Log.ConsoleInfo($"《如出现因为施加buff给npc被踢出》");
-        TShock.Log.ConsoleInfo($"可临时将玩家提升vip组 /user group 玩家名 vip");
-        TShock.Log.ConsoleInfo($"请自行甄别玩家是否开挂,否则后果自负");
         TShock.Log.ConsoleInfo($"配置文件路径:{ConfigPath}");
-
         Console.WriteLine(string.Empty);
 
         if (Config.PostCMD.Any())

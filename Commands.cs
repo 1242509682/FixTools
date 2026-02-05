@@ -307,11 +307,12 @@ internal class Commands
         info.AppendLine(" Regions - 区域领地坐标");
         info.AppendLine(" Research - 旅途研究");
         info.AppendLine(" RememberedPos - 回服传送记录点");
-        info.AppendLine("4.删除指定文件(当前地图备份、日志文件)");
-        info.AppendLine($"5.检测【{Path.GetFileName(MapDir)}】是否有地图文件:");
+        info.AppendLine("4.清理已解锁怪物表中的怪物名称");
+        info.AppendLine("5.删除指定文件(当前地图备份、日志文件)");
+        info.AppendLine($"6.检测【{Path.GetFileName(MapDir)}】是否有地图文件:");
         info.AppendLine("有: 随机选择地图并改名SFE4.wld复制world文件夹");
         info.AppendLine("没有: 根据server.properties内的参数创建新地图");
-        info.AppendLine("6.重置后执行关服,根据启动项自动重启");
+        info.AppendLine("7.重置后执行关服,根据启动项自动重启");
 
         info.AppendLine($"\n确认重置请输入: /{CmdName} reset yes");
         info.AppendLine("警告: 此操作不可逆，请确保已备份重要数据!");
