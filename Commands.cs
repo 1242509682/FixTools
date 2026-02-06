@@ -137,6 +137,15 @@ internal class Commands
                     SwitchMotd(plr);
                     break;
 
+                case "bag":
+                case "宝藏袋":
+                    SwitchTPBag(args, plr);
+                    break;
+
+                case "cheat":
+                    SwitchNoUseRgionCheat(args, plr);
+                    break;
+
                 case "自动注册":
                 case "register":
                 case "reg":
@@ -189,7 +198,7 @@ internal class Commands
 
                 case "自动备份":
                 case "save":
-                    AutoSave(args,plr);
+                    AutoSave(args, plr);
                     break;
 
                 case "进度锁":
@@ -225,6 +234,8 @@ internal class Commands
             mess.AppendLine($"/{CmdName} save ——自动备份存档");
             mess.AppendLine($"/{CmdName} vs ——设置导出版本号");
             mess.AppendLine($"/{CmdName} join ——跨版本进服开关");
+            mess.AppendLine($"/{CmdName} bag ——宝藏袋传送开关");
+            mess.AppendLine($"/{CmdName} cheat ——禁用区域箱子材料");
             mess.AppendLine($"/{CmdName} motd ——进服公告开关");
             mess.AppendLine($"/{CmdName} fix ——修复地图区块缺失");
             mess.AppendLine($"/{CmdName} copy ——复制文件");
@@ -246,6 +257,8 @@ internal class Commands
                             $"/{CmdName} save ——自动备份存档\n" +
                             $"/{CmdName} vs ——设置导出版本号\n" +
                             $"/{CmdName} join ——跨版本进服开关\n" +
+                            $"/{CmdName} bag ——宝藏袋传送开关\n" +
+                            $"/{CmdName} cheat ——禁用区域箱子材料\n" +
                             $"/{CmdName} motd ——进服公告开关\n" +
                             $"/{CmdName} fix ——修复地图区块缺失\n" +
                             $"/{CmdName} copy ——复制文件\n" +
@@ -416,6 +429,66 @@ internal class Commands
         Config.AutoSaveInterval = time;
         Config.Write();
         plr.SendMessage($"自动备份间隔已从 {oldtime} => {time}分钟", color);
+    }
+    #endregion
+
+    #region 禁用区域箱子材料开关
+    private static void SwitchNoUseRgionCheat(CommandArgs args, TSPlayer plr)
+    {
+        if (args.Parameters.Count < 2)
+        {
+            Config.NoUseRgionCheat = !Config.NoUseRgionCheat;
+            Config.Write();
+            var state = Config.NoUseRgionCheat ? "开启" : "关闭";
+            plr.SendMessage($"禁用区域箱子材料已切换为 {state}", color);
+            plr.SendMessage($"改禁用范围: /{CmdName} cheat 格数", color);
+            return;
+        }
+
+        if (!float.TryParse(args.Parameters[1], out float range))
+        {
+            plr.SendMessage($"请输入正确数字 如:/{CmdName} cheat 40", color);
+            plr.SendMessage($"当前为范围:{Config.NoUseCheatRange}格", color2);
+            return;
+        }
+
+        var oldRange = Config.NoUseCheatRange;
+        Config.NoUseCheatRange = range;
+        Config.Write();
+        plr.SendMessage($"禁用范围已从 {oldRange} => {Config.NoUseCheatRange}格", color);
+    }
+    #endregion
+
+    #region 宝藏袋传送开关
+    private static void SwitchTPBag(CommandArgs args, TSPlayer plr)
+    {
+        if (args.Parameters.Count < 2)
+        {
+            Config.TpBag = !Config.TpBag;
+            Config.Write();
+            var state = Config.TpBag ? "开启" : "关闭";
+            TSPlayer.All.SendMessage($"宝藏袋传送已切换为 {state}", color);
+            plr.SendMessage($"修改关键词: /{CmdName} bag 关键词", color);
+            plr.SendMessage($"存在则移除，不再则添加", color2);
+            return;
+        }
+
+        string txt = args.Parameters[1];
+        if (!string.IsNullOrEmpty(txt))
+        {
+            var state = Config.AllowTpBagText.Contains(txt) ? "[c/FF5149:移除]" : "[c/3FAEDB:添加]";
+            if (Config.AllowTpBagText.Contains(txt))
+            {
+                Config.AllowTpBagText.Remove(txt);
+            }
+            else
+            {
+                Config.AllowTpBagText.Add(txt);
+            }
+
+            Config.Write();
+            plr.SendMessage($"已{state}宝藏袋传送关键词: [c/F9FD49:{txt}]", color);
+        }
     }
     #endregion
 
@@ -1140,7 +1213,7 @@ internal class Commands
         newLines.Add($"autocreate={size}");
         File.WriteAllLines(Paths, newLines);
         TShock.Log.ConsoleInfo($"已在 server.properties 中 添加 autocreate={size}");
-    } 
+    }
     #endregion
 
     #endregion

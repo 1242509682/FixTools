@@ -37,22 +37,38 @@ internal class Configuration
     [JsonProperty("注册默认密码", Order = 12)]
     public string DefPass { get; set; } = "123456";
 
-    [JsonProperty("启用进服公告", Order = 13)]
-    public bool MotdState { get; set; } = true;
-    [JsonProperty("进服公告", Order = 14)]
-    public HashSet<string> MotdMess { get; set; } = [];
+    [JsonProperty("宝藏袋传送", Order = 13)]
+    public bool TpBag { get; set; } = true;
+    [JsonProperty("宝藏袋传送关键词", Order = 14)]
+    public List<string> AllowTpBagText { get; set; } = new();
 
-    [JsonProperty("开服后执行指令", Order = 19)]
+    [JsonProperty("禁用区域箱子材料", Order = 15)]
+    public bool NoUseRgionCheat { get; set; } = true;
+    [JsonProperty("禁用区域箱子范围", Order = 15)]
+    public float NoUseCheatRange { get; set; } = 40;
+    [JsonProperty("允许区域合成组", Order = 16)]
+    public List<string> AllowRegionGroup { get; set; } = new();
+
+    [JsonProperty("启用进服公告", Order = 20)]
+    public bool MotdState { get; set; } = true;
+    [JsonProperty("进服公告1", Order = 21)]
+    public string[] MotdMess { get; set; } = [];
+    [JsonProperty("进服公告2", Order = 22)]
+    public string[] MotdMess2 { get; set; } = [];
+    [JsonProperty("进服公告3", Order = 23)]
+    public string[] MotdMess3 { get; set; } = [];
+
+    [JsonProperty("开服后执行指令", Order = 24)]
     public HashSet<string> PostCMD = [];
-    [JsonProperty("游戏时执行指令", Order = 20)]
+    [JsonProperty("游戏时执行指令", Order = 25)]
     public HashSet<string> GameCMD = [];
-    [JsonProperty("重置后执行指令", Order = 21)]
+    [JsonProperty("重置后执行指令", Order = 26)]
     public HashSet<string> AfterCMD = [];
-    [JsonProperty("重置前执行指令", Order = 22)]
+    [JsonProperty("重置前执行指令", Order = 27)]
     public HashSet<string> BeforeCMD = [];
 
     [JsonProperty("人数进度锁", Order = 30)]
-    public bool ProgressLock { get; set; } = true;
+    public bool ProgressLock { get; set; } = false;
     [JsonProperty("解锁人数", Order = 31)]
     public int UnLockCount { get; set; } = 3;
     [JsonProperty("已解锁怪物", Order = 32)]
@@ -81,27 +97,41 @@ internal class Configuration
 
         MotdMess =
         [
-            "\n[本插件支持以下功能] 适配版本号:123a3bd",
-            "1.导入或导出玩家强制开荒存档、自动备份存档",
-            "2.进服公告、跨版本进服、自动修复地图区块缺失",
-            "3.批量改权限、导出权限表、批量删文件、复制文件",
-            "4.自动注册、自动建GM组、自动配权、进度锁、重置服务器",
-
-            "\n《如出现因为施加buff给npc被踢出》",
-            "可将玩家提升到vip组 /user group 玩家名 vip",
-            "请自行甄别玩家是否开挂,否则后果自负",
-
-            "\n欢迎来到泰拉瑞亚 1.4.5.4 服务器",
+            "\n欢迎 拿着{武器类型}{物品图标}的{玩家名} 来到 {服务器名}",
+            "在线玩家 [c/FFFFFF:({在线人数}/{服务器上限})]: {在线玩家}",
+            $"指令:/{CmdName} 权限:{CmdName}.use",
+            "配置路径: tshock/[c/FF6962:{插件名}]/配置文件.json",
             "TShock官方Q群:816771079",
-           $"指令/{CmdName} 权限:{CmdName}.use",
-           $"配置文件路径: tshock/{PluginName}/配置文件.json",
+            "所在队伍:{队伍} {同队人数}/{别队人数}",
+            "同队玩家:{同队玩家}",
+            "当前进度:{进度}",
+            "---------",
+            "发送[c/FF6962:任意消息]了解本插件相关功能\n",
+        ];
 
-            "\n已根据配置自动批量添加组权限",
-            "不需可批量移除:/pout del",
+        MotdMess2 =
+        [
+            "---------",
+            $"《插件支持功能》适配版本:{TShockVS}",
+            "[c/FFFFFF:1.]导入导出SSC存档、自动备份存档、禁用区域箱子材料",
+            "[c/FFFFFF:2.]智能进服公告、跨版本进服、自动修复地图区块缺失",
+            "[c/FFFFFF:3.]批量改权限、导出权限表、复制文件、宝藏袋传送",
+            "[c/FFFFFF:4.]自动注册、自动建GM组、自动配权、进度锁、重置服务器",
+            "---------",
+            "发送[c/FF6962:任意消息]显示下条信息\n",
+        ];
+
+        MotdMess3 =
+        [
+            "---------",
+            "《小提示》",
             "人数进度锁开关:/pout boss",
             "重置服务器流程:/pout reset",
-            "控制台指定管理:/user group 玩家名 GM",
-           $"\n[{PluginName}] 祝您游戏愉快!!  by羽学\n",
+            "控制台指定管理:/user group {玩家名} GM",
+            "[c/56B7E0:加buff给npc]被踢的[c/FFA562:临时]解决方案",
+            "分配到VIP组: /user group {玩家名} vip",
+
+             $"\n祝您游戏愉快!! [i:3459][c/81C9E8:by] [c/00FFFF:羽学][i:3456]\n",
         ];
 
         ClearSql =
@@ -132,6 +162,17 @@ internal class Configuration
         PostCMD = ["/worldinfo"];
 
         AfterCMD = ["/off"];
+
+        AllowTpBagText = 
+        [
+            "宝藏袋","bag"
+        ];
+
+        AllowRegionGroup = 
+        [
+            "superadmin","GM","admin","owner",
+            "newadmin","trustedadmin",
+        ];
 
         BeforeCMD =
         [

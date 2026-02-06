@@ -70,131 +70,210 @@ internal class Utils
     }
     #endregion
 
-    #region 渐变着色方法 + 物品图标解析
-    public static string TextGradient(string text, Color[]? colors = null)
+    #region 渐变着色方法
+    public static string TextGradient(string text, TSPlayer? plr = null)
     {
-        // 处理空值或空字符串
         if (string.IsNullOrEmpty(text))
             return text;
 
-        // 如果文本中已包含 [c/xxx:] 自定义颜色标签，则不做渐变，只替换图标
+        text = placeholder(text, plr);
+
+        // 检查是否已包含颜色标签
         if (text.Contains("[c/"))
         {
-            return ReplaceIconsOnly(text);
+            // 如果有颜色标签，保留它们并处理其他部分
+            return MixedText(text);
         }
-
-        var name = new StringBuilder();
-        int length = text.Length;
-        int Index = 0; // 渐变索引，排除换行符
-
-        // 首先计算需要渐变的总字符数（排除换行符和图标标签）
-        int CharCount = 0;
-        for (int i = 0; i < length; i++)
+        else
         {
-            // 检查是否是图标标签 [i:xxx] 或 [i/s数量:xxx]
-            if (text[i] == '[' && i + 2 < length && text[i + 1] == 'i')
-            {
-                // 跳过整个图标标签
-                int end = text.IndexOf(']', i);
-                if (end != -1)
-                {
-                    i = end;
-                    continue;
-                }
-            }
-            else if (text[i] != '\n' && text[i] != '\r')
-            {
-                CharCount++;
-            }
+            // 如果没有颜色标签，直接应用渐变
+            return ApplyGrad(text);
         }
-
-        // 重置索引
-        for (int i = 0; i < length; i++)
-        {
-            char c = text[i];
-
-            // 处理换行符 - 直接保留
-            if (c == '\n' || c == '\r')
-            {
-                name.Append(c);
-                continue;
-            }
-
-            // 检查是否是图标标签 [i:xxx] 或 [i/s数量:xxx]
-            if (c == '[' && i + 1 < length && text[i + 1] == 'i')
-            {
-                int end = text.IndexOf(']', i);
-                if (end != -1)
-                {
-                    string tag = text.Substring(i, end - i + 1);
-
-                    // 解析物品图标标签
-                    if (TryParseItemTag(tag, out string iconTag))
-                    {
-                        name.Append(iconTag);
-                    }
-                    else
-                    {
-                        name.Append(tag); // 无效标签保留原样
-                    }
-
-                    i = end; // 跳过整个标签
-                }
-                else
-                {
-                    name.Append(c);
-                    Index++;
-                }
-            }
-            else
-            {
-                // 渐变颜色计算，排除换行符
-                var start = colors is not null ? colors[0] : new Color(166, 213, 234);
-                var endColor = colors is not null ? colors[1] : new Color(245, 247, 175);
-                float ratio = CharCount <= 1 ? 0.5f : (float)Index / (CharCount - 1);
-                var color = Color.Lerp(start, endColor, ratio);
-
-                name.Append($"[c/{color.Hex3()}:{c}]");
-                Index++;
-            }
-        }
-
-        return name.ToString();
-    }
-
-    // 解析物品图标标签
-    private static bool TryParseItemTag(string tag, out string result)
-    {
-        result = tag;
-
-        // 匹配 [i:物品ID] 格式
-        var match1 = Regex.Match(tag, @"^\[i:(\d+)\]$");
-        if (match1.Success)
-        {
-            if (int.TryParse(match1.Groups[1].Value, out int itemID))
-            {
-                result = ItemIcon(itemID);
-                return true;
-            }
-        }
-
-        // 匹配 [i/s数量:物品ID] 格式
-        var match2 = Regex.Match(tag, @"^\[i/s(\d+):(\d+)\]$");
-        if (match2.Success)
-        {
-            if (int.TryParse(match2.Groups[2].Value, out int itemID))
-            {
-                int stack = int.Parse(match2.Groups[1].Value);
-                result = ItemIcon(itemID, stack);
-                return true;
-            }
-        }
-
-        return false;
     }
     #endregion
 
-    #region 最好的查找
+    #region 占位符替换方法(忽略大小写)
+    private static string placeholder(string text, TSPlayer? plr)
+    {
+        if (plr != null)
+        {
+            text = Regex.Replace(text, @"\{玩家名\}", plr.Name, RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{ip\}", plr.IP, RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{uuid\}", plr.UUID, RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{组名\}", plr.Account.Group, RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{账号\}", plr.Account.ID.ToString(), RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{武器类型\}", GetWeapon(plr.SelectedItem), RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{物品图标\}", ItemIcon(plr.SelectedItem.type), RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{物品名\}", Lang.GetItemNameValue(plr.SelectedItem.type), RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{生命\}", plr.TPlayer.statLife.ToString(), RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{生命上限\}", plr.TPlayer.statLifeMax.ToString(), RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{魔力\}", plr.TPlayer.statMana.ToString(), RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{魔力上限\}", plr.TPlayer.statManaMax.ToString(), RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{队伍\}", GetTeamCName(plr.Team), RegexOptions.IgnoreCase);
+
+            // 同队人数
+            if (Regex.IsMatch(text, @"\{同队人数\}", RegexOptions.IgnoreCase))
+            {
+                int teamCount = TShock.Players.Count(p => p != null && p.Active && p.Team == plr.Team);
+                text = Regex.Replace(text, @"\{同队人数\}", teamCount.ToString(), RegexOptions.IgnoreCase);
+            }
+
+            // 同队玩家名称
+            if (Regex.IsMatch(text, @"\{同队玩家\}", RegexOptions.IgnoreCase))
+            {
+                var TeamPlayer = TShock.Players
+                    .Where(p => p != null && p.Active && p.Team == plr.Team)
+                    .Select(p => p.Name);
+                text = Regex.Replace(text, @"\{同队玩家\}",
+                    string.Join(", ", TeamPlayer), RegexOptions.IgnoreCase);
+            }
+
+            // 别队人数
+            if (Regex.IsMatch(text, @"\{别队人数\}", RegexOptions.IgnoreCase))
+            {
+                int otherTeamCount = TShock.Players
+                    .Count(p => p != null && p.Active && p.Team != plr.Team);
+                text = Regex.Replace(text, @"\{别队人数\}",
+                    otherTeamCount.ToString(), RegexOptions.IgnoreCase);
+            }
+        }
+
+        // 队伍统计
+        if (Regex.IsMatch(text, @"\{队伍统计\}", RegexOptions.IgnoreCase))
+        {
+            var teamStats = new StringBuilder();
+            for (int i = 0; i <= 5; i++)
+            {
+                int count = TShock.Players.Count(p => p != null && p.Active && p.Team == i);
+                if (count > 0)
+                {
+                    teamStats.Append($"{GetTeamCName(i)}-{count}人 ");
+                }
+            }
+            text = Regex.Replace(text, @"\{队伍统计\}", teamStats.ToString(), RegexOptions.IgnoreCase);
+        }
+
+        // 服务器名
+        text = Regex.Replace(text, @"\{服务器名\}",
+            TShock.Config.Settings.UseServerName ? TShock.Config.Settings.ServerName : Main.worldName,
+            RegexOptions.IgnoreCase);
+
+        // 在线人数
+        text = Regex.Replace(text, @"\{在线人数\}",
+            TShock.Utils.GetActivePlayerCount().ToString(),
+            RegexOptions.IgnoreCase);
+
+        // 服务器上限
+        text = Regex.Replace(text, @"\{服务器上限\}",
+            TShock.Config.Settings.MaxSlots.ToString(),
+            RegexOptions.IgnoreCase);
+
+        text = Regex.Replace(text, @"\{插件名\}",
+            PluginName,
+            RegexOptions.IgnoreCase);
+
+        // 在线玩家
+        if (Regex.IsMatch(text, @"\{在线玩家\}", RegexOptions.IgnoreCase))
+        {
+            var plrs = TShock.Players.Where(p => p != null && p.Active).Select(p => p.Name);
+            string allPlayers = string.Join(", ", plrs);
+            text = Regex.Replace(text, @"\{在线玩家\}", allPlayers, RegexOptions.IgnoreCase);
+        }
+
+        // 进度
+        if (GetProgress().Count > 0)
+            text = Regex.Replace(text, @"\{进度\}", string.Join(",", GetProgress()), RegexOptions.IgnoreCase);
+        else
+            text = Regex.Replace(text, @"\{进度\}", "无", RegexOptions.IgnoreCase);
+
+        return text;
+    }
+    #endregion
+
+    #region 混合文本（包含颜色标签、物品图标标签和普通文本）
+    private static string MixedText(string text)
+    {
+        var res = new StringBuilder();
+
+        // 匹配颜色标签 [c/颜色:文本] 或 物品图标标签 [i:物品ID] 或 [i/s数量:物品ID]
+        var regex = new Regex(@"(\[c/([0-9a-fA-F]+):([^\]]+)\]|\[i(?:/s\d+)?:\d+\])");
+        var matches = regex.Matches(text);
+
+        if (matches.Count == 0)
+            return ApplyGrad(text);
+
+        int idx = 0;
+        foreach (Match match in matches.Cast<Match>())
+        {
+            // 添加标签前的普通文本（应用渐变）
+            if (match.Index > idx)
+            {
+                string plainText = text.Substring(idx, match.Index - idx);
+                res.Append(ApplyGrad(plainText));
+            }
+
+            // 添加标签本身（保持不变）
+            res.Append(match.Value);
+            idx = match.Index + match.Length;
+        }
+
+        // 添加最后一个标签后的普通文本
+        if (idx < text.Length)
+        {
+            string plainText = text.Substring(idx);
+            res.Append(ApplyGrad(plainText));
+        }
+
+        return res.ToString();
+    }
+    #endregion
+
+    #region 应用文本渐变方法
+    private static string ApplyGrad(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        var res = new StringBuilder();
+        var start = new Color(166, 213, 234);
+        var end = new Color(245, 247, 175);
+
+        // 计算有效字符数（排除换行符）
+        int cnt = 0;
+        foreach (char c in text)
+        {
+            if (c != '\n' && c != '\r')
+                cnt++;
+        }
+
+        // 如果没有有效字符，直接返回
+        if (cnt == 0)
+            return text;
+
+        int idx = 0;
+
+        foreach (char c in text)
+        {
+            if (c == '\n' || c == '\r')
+            {
+                res.Append(c);
+                continue;
+            }
+
+            // 计算渐变比例
+            float ratio = (float)idx / (cnt - 1);
+            var clr = Color.Lerp(start, end, ratio);
+
+            // 添加到结果
+            res.Append($"[c/{clr.Hex3()}:{c}]");
+            idx++;
+        }
+
+        return res.ToString();
+    } 
+    #endregion
+
+    #region 最好的查找（从枳那抄来的代码）
     public static List<TSPlayer> FindPlayer(string name)
     {
         if (int.TryParse(name, out var num))
@@ -272,7 +351,7 @@ internal class Utils
     }
     #endregion
 
-    #region 将 string 转化为能直接作用于文件名的 string
+    #region 将 string 转化为能直接作用于文件名的 string （从枳那抄来的代码）
     public static string FormatFileName(string text)
     {
         //移除不合法的字符
@@ -394,56 +473,6 @@ internal class Utils
     }
     #endregion
 
-    #region 只替换图标，不做渐变
-    public static string ReplaceIconsOnly(string text)
-    {
-        if (string.IsNullOrEmpty(text))
-            return text;
-
-        var result = new StringBuilder();
-        int index = 0;
-        int length = text.Length;
-
-        while (index < length)
-        {
-            char c = text[index];
-
-            // 检查是否是图标标签 [i:xxx] 或 [i/s数量:xxx]
-            if (c == '[' && index + 1 < length && text[index + 1] == 'i')
-            {
-                int end = text.IndexOf(']', index);
-                if (end != -1)
-                {
-                    string tag = text.Substring(index, end - index + 1);
-
-                    if (TryParseItemTag(tag, out string iconTag))
-                    {
-                        result.Append(iconTag);
-                    }
-                    else
-                    {
-                        result.Append(tag);
-                    }
-
-                    index = end + 1;
-                }
-                else
-                {
-                    result.Append(c);
-                    index++;
-                }
-            }
-            else
-            {
-                result.Append(c);
-                index++;
-            }
-        }
-
-        return result.ToString();
-    }
-    #endregion
-
     #region 返回物品图标方法
     // 根据物品ID返回物品图标
     public static string ItemIcon(ItemID itemID) => ItemIcon(itemID);
@@ -453,5 +482,152 @@ internal class Utils
     public static string ItemIcon(Item item) => ItemIcon(item.type, item.stack);
     // 返回带数量的物品图标
     public static string ItemIcon(int itemID, int stack = 1) => $"[i/s{stack}:{itemID}]";
+    #endregion
+
+    #region 队伍名称映射
+    public static string GetTeamCName(int teamId) => TeamColorMap.TryGetValue(teamId, out var name) ? name : "全体";
+    private static readonly Dictionary<int, string> TeamColorMap = new()
+    {
+        { 0, "[c/5ADECE:白队]" },{ 1, "[c/F56470:红队]" },
+        { 2, "[c/74E25C:绿队]" },{ 3, "[c/5A9DDE:蓝队]" },
+        { 4, "[c/FCF466:黄队]" },{ 5, "[c/E15BC2:粉队]" }
+    };
+    #endregion
+
+    #region 获取武器类型
+    public static string GetWeapon(Item item)
+    {
+        var Held = item;
+        if (Held == null || Held.type == 0) return "无";
+
+        if (Held.melee && Held.damage > 0 && Held.ammo == 0 &&
+            Held.pick < 1 && Held.hammer < 1 && Held.axe < 1) return "近战";
+
+        if (Held.ranged && Held.damage > 0 && Held.ammo == 0 && !Held.consumable) return "远程";
+
+        if (Held.magic && Held.damage > 0 && Held.ammo == 0) return "魔法";
+
+        if (ItemID.Sets.SummonerWeaponThatScalesWithAttackSpeed[Held.type]) return "召唤";
+
+        if (Held.maxStack == 9999 && Held.damage > 0 &&
+            Held.ammo == 0 && Held.ranged && Held.consumable ||
+            ItemID.Sets.ItemsThatCountAsBombsForDemolitionistToSpawn[Held.type]) return "投掷物";
+
+        return "未知";
+    }
+    #endregion
+
+    #region 获取进度
+    public static List<string> GetProgress()
+    {
+        var prog = new List<string>();
+
+        // 按照从高到低的进度检查
+        if (NPC.downedMoonlord)
+            prog.Add("月总");
+
+        if (NPC.downedTowerNebula && NPC.downedTowerSolar && NPC.downedTowerStardust && NPC.downedTowerVortex)
+        {
+            prog.Add("四柱");
+            prog.Remove("日耀");
+            prog.Remove("星旋");
+            prog.Remove("星尘");
+            prog.Remove("星云");
+        }
+        else
+        {
+            if (NPC.downedTowerSolar)
+                prog.Add("日耀");
+            if (NPC.downedTowerVortex)
+                prog.Add("星旋");
+            if (NPC.downedTowerStardust)
+                prog.Add("星尘");
+            if (NPC.downedTowerNebula)
+                prog.Add("星云");
+        }
+
+        if (NPC.downedAncientCultist)
+            prog.Add("拜月");
+
+        if (Terraria.GameContent.Events.DD2Event._spawnedBetsyT3)
+            prog.Add("双足翼龙");
+
+        if (NPC.downedMartians)
+            prog.Add("火星");
+
+        if (NPC.downedGolemBoss)
+            prog.Add("石巨人");
+
+        if (NPC.downedEmpressOfLight)
+            prog.Add("光女");
+
+        if (NPC.downedChristmasTree ||
+            NPC.downedChristmasIceQueen ||
+            NPC.downedChristmasSantank)
+            prog.Add("霜月");
+
+        if (NPC.downedHalloweenTree || NPC.downedHalloweenKing)
+            prog.Add("南瓜月");
+
+        if (NPC.downedPlantBoss)
+            prog.Add("世花");
+
+        if (NPC.downedFishron)
+            prog.Add("猪鲨");
+
+        // 机械三王判断
+        if (NPC.downedMechBoss1 && NPC.downedMechBoss2 && NPC.downedMechBoss3)
+        {
+            if (!Main.zenithWorld)
+                prog.Add("三王");
+            else
+                prog.Add("美杜莎");
+
+            prog.Remove("毁灭者");
+            prog.Remove("机械骷髅王");
+            prog.Remove("双子眼");
+        }
+        else
+        {
+            if (NPC.downedMechBoss2)
+                prog.Add("双子眼");
+            if (NPC.downedMechBoss3)
+                prog.Add("机械骷髅王");
+            if (NPC.downedMechBoss1)
+                prog.Add("毁灭者");
+        }
+
+        if (NPC.downedQueenSlime)
+            prog.Add("史后");
+
+        if (NPC.downedPirates)
+            prog.Add("海盗");
+
+        if (Main.hardMode)
+            prog.Add("肉山");
+
+        if (NPC.downedBoss3)
+            prog.Add("骷髅王");
+
+        if (NPC.downedQueenBee)
+            prog.Add("蜂王");
+
+        if (NPC.downedBoss2)
+            prog.Add("世吞克脑");
+
+        if (NPC.downedDeerclops)
+            prog.Add("鹿角怪");
+
+        if (NPC.downedSlimeKing)
+            prog.Add("史王");
+
+        if (NPC.downedBoss1)
+            prog.Add("克眼");
+
+        if (NPC.downedGoblins)
+            prog.Add("哥布林");
+
+        return prog;
+    }
     #endregion
 }
