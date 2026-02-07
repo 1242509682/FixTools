@@ -403,21 +403,21 @@ internal class Utils
         try
         {
             // 扫描复制源文件文件夹
-            if (!Directory.Exists(CopyDir))
+            if (!Directory.Exists(Commands.CopyDir))
             {
-                Directory.CreateDirectory(CopyDir);
-                plr.SendMessage($"已创建复制源文件文件夹: {CopyDir}", color);
+                Directory.CreateDirectory(Commands.CopyDir);
+                plr.SendMessage($"已创建复制源文件文件夹: {Commands.CopyDir}", color);
                 plr.SendMessage($"请将文件放入此文件夹后重试", color);
                 return;
             }
 
             // 获取源文件夹中的所有文件
-            var srcFiles = Directory.GetFiles(CopyDir, "*", SearchOption.TopDirectoryOnly);
+            var srcFiles = Directory.GetFiles(Commands.CopyDir, "*", SearchOption.TopDirectoryOnly);
 
             if (srcFiles.Length == 0)
             {
                 plr.SendMessage($"复制源文件文件夹中没有文件", color);
-                plr.SendMessage($"文件夹路径: {CopyDir}", color);
+                plr.SendMessage($"文件夹路径: {Commands.CopyDir}", color);
                 plr.SendMessage($"请将文件放入此文件夹后重试", color);
                 return;
             }
@@ -434,7 +434,7 @@ internal class Utils
 
             // 构建文件列表
             var fileList = new StringBuilder();
-            fileList.AppendLine($"{CopyDir}:");
+            fileList.AppendLine($"{Commands.CopyDir}:");
             fileList.AppendLine($"找到 {srcFiles.Length} 个文件:");
 
             for (int i = 0; i < srcFiles.Length; i++)
@@ -629,5 +629,19 @@ internal class Utils
 
         return prog;
     }
+    #endregion
+
+    #region 获取入侵事件名称
+    public static string GetInvasionName(int type)
+    {
+        return type switch
+        {
+            1 => "哥布林",
+            2 => "雪人军团",
+            3 => "海盗",
+            4 => "火星暴乱",
+            _ => "未知"
+        };
+    } 
     #endregion
 }

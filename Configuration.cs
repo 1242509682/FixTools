@@ -7,79 +7,89 @@ namespace FixTools;
 
 internal class Configuration
 {
-    [JsonProperty("自建GM权限组", Order = 0)]
+    [JsonProperty("自建GM权限组", Order = -100)]
     public bool AutoAddGM { get; set; } = true;
-    [JsonProperty("跨版本进服", Order = 1)]
-    public bool NoVisualLimit { get; set; } = true;
-    [JsonProperty("自动修复地图缺失", Order = 2)]
-    public bool AutoFixWorld { get; set; } = true;
-
-    [JsonProperty("自动备份存档", Order = 3)]
-    public bool AutoSavePlayer { get; set; } = true;
-    [JsonProperty("自动备份数据库", Order = 4)]
-    public bool AutoSaveSqlite { get; set; } = true;
-    [JsonProperty("备份存档分钟数", Order = 5)]
-    public int AutoSaveInterval { get; set; } = 30;
-    [JsonProperty("导出存档的版本号", Order = 6)]
-    public int GameVersion { get; set; } = 315;
-    [JsonProperty("版本号对照参考表", Order = 7)]
-    public HashSet<string> Example { get; set; } = [];
-
-    [JsonProperty("清理数据表", Order = 8)]
-    public HashSet<string> ClearSql { get; set; } = [];
-    [JsonProperty("删除文件", Order = 9)]
-    public HashSet<string> DeleteFile { get; set; } = [];
-    [JsonProperty("复制文件输出路径", Order = 10)]
-    public List<string> CopyPaths = [];
-
-    [JsonProperty("启用自动注册", Order = 11)]
+    [JsonProperty("启用自动注册", Order = -99)]
     public bool AutoRegister { get; set; } = true;
-    [JsonProperty("注册默认密码", Order = 12)]
+    [JsonProperty("注册默认密码", Order = -98)]
     public string DefPass { get; set; } = "123456";
 
-    [JsonProperty("宝藏袋传送", Order = 13)]
-    public bool TpBag { get; set; } = true;
-    [JsonProperty("宝藏袋传送关键词", Order = 14)]
-    public List<string> AllowTpBagText { get; set; } = new();
+    [JsonProperty("自动备份存档", Order = -80)]
+    public bool AutoSavePlayer { get; set; } = true;
+    [JsonProperty("自动备份地图", Order = -79)]
+    public bool AutoSaveWorld { get; set; } = true;
+    [JsonProperty("自动备份数据库", Order = -79)]
+    public bool AutoSaveSqlite { get; set; } = true;
+    [JsonProperty("备份存档分钟数", Order = -78)]
+    public int AutoSaveInterval { get; set; } = 30;
+    [JsonProperty("自动清理备份", Order = -77)]
+    public bool AutoClean { get; set; } = true;
+    [JsonProperty("保留备份数量", Order = -76)]
+    public int MaxBackup { get; set; } = 30;
+    [JsonProperty("备份显示消息", Order = -75)]
+    public bool ShowAutoSaveMsg { get; set; } = true;
+    [JsonProperty("导出存档的版本号", Order = -74)]
+    public int GameVersion { get; set; } = 315;
+    [JsonProperty("版本号对照参考表", Order = -75)]
+    public HashSet<string> Example { get; set; } = [];
 
-    [JsonProperty("禁用区域箱子材料", Order = 15)]
+    [JsonProperty("跨版本进服", Order = -60)]
+    public bool NoVisualLimit { get; set; } = true;
+    [JsonProperty("宝藏袋传送", Order = -59)]
+    public bool TpBagEnabled { get; set; } = true;
+    [JsonProperty("宝藏袋传送关键词", Order = -58)]
+    public List<string> AllowTpBagText { get; set; } = new();
+    [JsonProperty("自动修复地图缺失", Order = -57)]
+    public bool AutoFixWorld { get; set; } = true;
+    [JsonProperty("修复物品召唤入侵事件", Order = -56)]
+    public bool FixStartInvasion { get; set; } = true;
+    [JsonProperty("禁用区域箱子材料", Order = -55)]
     public bool NoUseRgionCheat { get; set; } = true;
-    [JsonProperty("禁用区域箱子范围", Order = 15)]
+    [JsonProperty("禁用区域箱子范围", Order = -54)]
     public float NoUseCheatRange { get; set; } = 40;
-    [JsonProperty("允许区域合成组", Order = 16)]
+    [JsonProperty("允许区域合成组", Order = -53)]
     public List<string> AllowRegionGroup { get; set; } = new();
 
-    [JsonProperty("启用进服公告", Order = 20)]
-    public bool MotdState { get; set; } = true;
-    [JsonProperty("进服公告1", Order = 21)]
-    public string[] MotdMess { get; set; } = [];
-    [JsonProperty("进服公告2", Order = 22)]
-    public string[] MotdMess2 { get; set; } = [];
-    [JsonProperty("进服公告3", Order = 23)]
-    public string[] MotdMess3 { get; set; } = [];
-
-    [JsonProperty("开服后执行指令", Order = 24)]
-    public HashSet<string> PostCMD = [];
-    [JsonProperty("游戏时执行指令", Order = 25)]
-    public HashSet<string> GameCMD = [];
-    [JsonProperty("重置后执行指令", Order = 26)]
+    [JsonProperty("重置清理数据表", Order = 1)]
+    public HashSet<string> ClearSql { get; set; } = [];
+    [JsonProperty("重置时删除文件", Order = 2)]
+    public HashSet<string> DeleteFile { get; set; } = [];
+    [JsonProperty("重置后执行指令", Order = 3)]
     public HashSet<string> AfterCMD = [];
-    [JsonProperty("重置前执行指令", Order = 27)]
+    [JsonProperty("重置前执行指令", Order = 4)]
     public HashSet<string> BeforeCMD = [];
 
-    [JsonProperty("人数进度锁", Order = 30)]
+    [JsonProperty("开服后执行指令", Order = 5)]
+    public HashSet<string> PostCMD = [];
+    [JsonProperty("游戏时执行指令", Order = 6)]
+    public HashSet<string> GameCMD = [];
+
+    [JsonProperty("开服自动配权", Order = 20)]
+    public bool AutoPerm { get; set; } = true;
+    [JsonProperty("启用进服公告", Order = 21)]
+    public bool MotdEnabled { get; set; } = true;
+    [JsonProperty("进服公告1", Order = 22)]
+    public string[] MotdMess { get; set; } = [];
+    [JsonProperty("进服公告2", Order = 23)]
+    public string[] MotdMess2 { get; set; } = [];
+    [JsonProperty("进服公告3", Order = 24)]
+    public string[] MotdMess3 { get; set; } = [];
+
+    [JsonProperty("复制文件输出路径", Order = 40)]
+    public List<string> CopyPaths = [];
+
+    [JsonProperty("人数进度锁", Order = 50)]
     public bool ProgressLock { get; set; } = false;
-    [JsonProperty("解锁人数", Order = 31)]
+    [JsonProperty("解锁人数", Order = 51)]
     public int UnLockCount { get; set; } = 3;
-    [JsonProperty("已解锁怪物", Order = 32)]
+    [JsonProperty("已解锁怪物", Order = 52)]
     public HashSet<string> UnLockNpc = new HashSet<string>();
-    [JsonProperty("进度锁怪物", Order = 33)]
+    [JsonProperty("进度锁怪物", Order = 53)]
     public HashSet<string> LockNpc = new HashSet<string>();
 
-    [JsonProperty("开服自动配权", Order = 40)]
-    public bool AutoPerm { get; set; } = true;
-    [JsonProperty("批量改权限", Order = 41)]
+    [JsonProperty("批量改权限", Order = 71)]
     public Dictionary<string, HashSet<string>> Permission = [];
+
 
     #region 预设参数方法
     public void SetDefault()
@@ -114,9 +124,10 @@ internal class Configuration
             "---------",
             $"《插件支持功能》适配版本:{TShockVS}",
             "[c/FFFFFF:1.]导入导出SSC存档、自动备份存档、禁用区域箱子材料",
-            "[c/FFFFFF:2.]智能进服公告、跨版本进服、自动修复地图区块缺失",
+            "[c/FFFFFF:2.]智能进服公告、跨版本进服、修复地图区块缺失",
             "[c/FFFFFF:3.]批量改权限、导出权限表、复制文件、宝藏袋传送",
             "[c/FFFFFF:4.]自动注册、自动建GM组、自动配权、进度锁、重置服务器",
+            "[c/FFFFFF:5.]修复物品召唤入侵事件",
             "---------",
             "发送[c/FF6962:任意消息]显示下条信息\n",
         ];

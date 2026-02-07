@@ -1,16 +1,14 @@
-﻿using System.Collections.Concurrent;
-using Microsoft.Xna.Framework;
-using Terraria;
+﻿using Terraria;
 using Terraria.ID;
 using Terraria.Net;
-using TerrariaApi.Server;
 using TShockAPI;
 using TShockAPI.DB;
 using TShockAPI.Hooks;
-using static FixTools.Utils;
+using TerrariaApi.Server;
+using Microsoft.Xna.Framework;
 using On.Terraria.GameContent;
-using NuGet.Packaging;
-using System.ComponentModel;
+using static FixTools.Utils;
+using static FixTools.PlayerState;
 
 namespace FixTools;
 
@@ -20,7 +18,7 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 2, 7);
+    public override Version Version => new(2026, 2, 8);
     public override string Description => "本插件仅TShock测试版期间维护,指令/pout";
     #endregion
 
@@ -28,20 +26,8 @@ public partial class FixTools : TerrariaPlugin
     public static string PluginName => "145修复小公举"; // 插件名称
     public static string CmdName => "pout"; // 指令名称
     public static string TShockVS => "c5a1747"; // 适配版本号
-    internal static Configuration Config = new(); // 配置文件实例
     public static readonly string MainPath = Path.Combine(TShock.SavePath, PluginName); // 主文件夹路径
     public static readonly string ConfigPath = Path.Combine(MainPath, "配置文件.json"); // 配置文件路径
-    public static readonly string CopyDir = Path.Combine(MainPath, "复制源文件"); // 复制源文件路径
-    public static readonly string AutoSaveDir = Path.Combine(MainPath, "自动备份存档"); // 自动备份角色路径
-    public static readonly string SqlPath = Path.Combine(TShock.SavePath, "tshock.sqlite"); // 数据库路径
-    public static readonly string WritePlrDir = Path.Combine(MainPath, "导出存档"); // 导出角色路径
-    public static readonly string ReaderPlrDir = Path.Combine(MainPath, "导入存档"); // 导入角色路径
-    public static readonly string MapDir = Path.Combine(MainPath, "重置时用的复制地图"); // 复制地图路径
-    public static readonly string WldDir = Path.Combine(typeof(TShock).Assembly.Location, "world"); // 加载地图路径
-    public static readonly string StartConfigPath = Path.Combine(typeof(TShock).Assembly.Location, "server.properties"); // 启动参数路径
-    // 存储需要恢复存档的玩家数据,用于死亡复活后或死亡退出回服后恢复存档（键：玩家名，值：PlayerData）
-    public static ConcurrentDictionary<string, PlayerData> NeedRestores = new();
-    private static Dictionary<string, List<Vector2>> BagPos = new(); // 每个玩家的宝藏袋位置,使用后进先出
     #endregion
 
     #region 注册与释放
@@ -52,26 +38,25 @@ public partial class FixTools : TerrariaPlugin
         if (!Directory.Exists(MainPath))
             Directory.CreateDirectory(MainPath);
         // 创建复制源文件文件夹
-        if (!Directory.Exists(CopyDir))
-            Directory.CreateDirectory(CopyDir);
+        if (!Directory.Exists(Commands.CopyDir))
+            Directory.CreateDirectory(Commands.CopyDir);
         // 创建复制地图文件夹
-        if (!Directory.Exists(MapDir))
-            Directory.CreateDirectory(MapDir);
+        if (!Directory.Exists(Commands.MapDir))
+            Directory.CreateDirectory(Commands.MapDir);
         // 创建导出存档文件夹
-        if (!Directory.Exists(WritePlrDir))
-            Directory.CreateDirectory(WritePlrDir);
+        if (!Directory.Exists(WritePlayer.WritePlrDir))
+            Directory.CreateDirectory(WritePlayer.WritePlrDir);
         // 创建导入存档文件夹
-        if (!Directory.Exists(ReaderPlrDir))
-            Directory.CreateDirectory(ReaderPlrDir);
+        if (!Directory.Exists(ReaderPlayer.ReaderPlrDir))
+            Directory.CreateDirectory(ReaderPlayer.ReaderPlrDir);
         // 创建自动备份文件夹
-        if (!Directory.Exists(AutoSaveDir))
-            Directory.CreateDirectory(AutoSaveDir);
+        if (!Directory.Exists(WritePlayer.AutoSaveDir))
+            Directory.CreateDirectory(WritePlayer.AutoSaveDir);
 
         LoadConfig(); // 加载配置文件
         GeneralHooks.ReloadEvent += ReloadConfig;
         ServerApi.Hooks.GamePostInitialize.Register(this, this.GamePost, 9999);
         ServerApi.Hooks.ServerJoin.Register(this, OnServerJoin);
-        ServerApi.Hooks.NetGreetPlayer.Register(this, this.OnGreetPlayer);
         ServerApi.Hooks.ServerLeave.Register(this, this.OnServerLeave);
         GetDataHandlers.PlayerUpdate.Register(this.OnPlayerUpdate);
         ServerApi.Hooks.NetGetData.Register(this, OnNetGetData);
@@ -92,7 +77,6 @@ public partial class FixTools : TerrariaPlugin
             GeneralHooks.ReloadEvent -= ReloadConfig;
             ServerApi.Hooks.GamePostInitialize.Deregister(this, this.GamePost);
             ServerApi.Hooks.ServerJoin.Deregister(this, OnServerJoin);
-            ServerApi.Hooks.NetGreetPlayer.Deregister(this, this.OnGreetPlayer);
             ServerApi.Hooks.ServerLeave.Deregister(this, this.OnServerLeave);
             GetDataHandlers.PlayerUpdate.UnRegister(this.OnPlayerUpdate);
             ServerApi.Hooks.NetGetData.Deregister(this, OnNetGetData);
@@ -110,6 +94,7 @@ public partial class FixTools : TerrariaPlugin
     #endregion
 
     #region 配置重载读取与写入方法
+    internal static Configuration Config = new(); // 配置文件实例
     private static void ReloadConfig(ReloadEventArgs args = null!)
     {
         LoadConfig();
@@ -196,13 +181,15 @@ public partial class FixTools : TerrariaPlugin
     #region 加入服务器自动注册
     private void OnServerJoin(JoinEventArgs args)
     {
-        if (!Config.AutoRegister) return;
+        var hasCaibot = ServerApi.Plugins.Any(p => p.Plugin.Name == "CaiBotLitePlugin");
+        if (!Config.AutoRegister || hasCaibot) return;
 
         var plr = TShock.Players[args.Who];
         if (plr == null || plr == TSPlayer.Server) return;
 
         var user = TShock.UserAccounts.GetUserAccountByName(plr.Name);
 
+        var motd = GetData(plr.Name);
         if (user is null)
         {
             var group = TShock.Config.Settings.DefaultRegistrationGroupName;
@@ -215,28 +202,18 @@ public partial class FixTools : TerrariaPlugin
                 // 给密码上个哈希，不然玩家改不了密码
                 NewUser.CreateBCryptHash(Config.DefPass);
                 TShock.UserAccounts.AddUserAccount(NewUser);
-                plr.SetData("Register", true);
+
+                motd.Register = true;
             }
             catch (Exception ex)
             {
                 TShock.Log.ConsoleError($"[{PluginName}] 自动注册失败 [{plr.Name}]: {ex.Message}");
             }
         }
-    }
-    #endregion
-
-    #region 获取已经登录玩家事件，设置进服公告标记
-    private void OnGreetPlayer(GreetPlayerEventArgs args)
-    {
-        var plr = TShock.Players[args.Who];
-        if (plr is null || !plr.RealPlayer ||
-            !plr.Active || !plr.IsLoggedIn)
+        else
         {
-            return;
+            motd.Motd = 1;
         }
-
-        if (Config.MotdState)
-            plr.SetData("motd", true);
     }
     #endregion
 
@@ -246,24 +223,16 @@ public partial class FixTools : TerrariaPlugin
         var plr = TShock.Players[args.Who];
         if (plr is null) return;
 
-        if (plr.GetData<bool>("motd"))
-            plr.RemoveData("motd");
-
-        if (plr.GetData<bool>("motd2"))
-            plr.RemoveData("motd2");
-
-        if (plr.GetData<DateTime?>("motd3").HasValue)
-            plr.RemoveData("motd3");
-
-        if (plr.GetData<bool>("Register"))
-            plr.RemoveData("Register");
-
-        if (BagPos.ContainsKey(plr.Name))
-            BagPos.Remove(plr.Name);
+        var data = GetData(plr.Name);
+        if (data != null)
+        {
+            data.Motd = 0;
+            data.Register = false;
+        }
     }
     #endregion
 
-    #region 玩家更新事件推送进服公告
+    #region 玩家更新事件推送进服公告+自动注册反馈+恢复存档+修复物品召唤入侵
     private void OnPlayerUpdate(object? sender, GetDataHandlers.PlayerUpdateEventArgs e)
     {
         var plr = e.Player;
@@ -271,18 +240,19 @@ public partial class FixTools : TerrariaPlugin
            !plr.Active || !plr.IsLoggedIn)
             return;
 
+        var data = GetData(plr.Name);
+
         // 进服公告
-        if (plr.GetData<bool>("motd"))
+        if (Config.MotdEnabled && data.Motd == 1)
         {
             if (Config.MotdMess.Any())
                 plr.SendMessage($"{TextGradient(string.Join("\n", Config.MotdMess), plr: plr)}", color);
 
-            plr.RemoveData("motd");
-            plr.SetData("motd2", true); // 显示更多信息
+            data.Motd = 2;
         }
 
         // 注册成功提示
-        if (plr.GetData<bool>("Register"))
+        if (data.Register)
         {
             var regText = $"\n[{PluginName}] 已为您自动注册，默认密码为: {Config.DefPass}\n" +
                             $"使用指令修改密码: /password {Config.DefPass} 新密码\n";
@@ -291,41 +261,45 @@ public partial class FixTools : TerrariaPlugin
             TShock.Log.ConsoleInfo($"[{PluginName}]");
             TShock.Log.ConsoleInfo($"自动为玩家 {plr.Name} 注册账号,密码为 {Config.DefPass}");
             TShock.Log.ConsoleInfo($"帮玩家修改密码: /user password {plr.Name} 新密码");
-            plr.RemoveData("Register");
+            data.Register = false;
         }
 
         // 检查是否需要恢复存档（玩家复活后）
-        if (NeedRestores.TryGetValue(plr.Name, out var data) && !plr.Dead)
+        if (data.NeedRestores != null && !plr.Dead)
         {
             try
             {
-                data?.RestoreCharacter(plr);
+                data.NeedRestores.RestoreCharacter(plr);
                 plr.SendMessage($"已自动为你恢复存档物品!", color);
             }
             finally
             {
-                NeedRestores.TryRemove(plr.Name, out _);
+                data.NeedRestores = null;
             }
+        }
+
+        // 修复玩家使用物品召唤入侵后未正确触发入侵事件的情况
+        if (Config.FixStartInvasion)
+        {
+            StartInvasion(plr);
         }
     }
     #endregion
 
     #region 游戏更新事件，自动备份存档
-    private long frame = 0;
+    private static long frame = 0;  // 自动备份计时器
     private void OnGameUpdate(EventArgs args)
     {
-        if (!Config.AutoSavePlayer) return;
-
-        frame++;
-
-        // 每30分钟执行备份
-        if (frame < Config.AutoSaveInterval * 60 * 60) return;
-
-        // 执行备份
-        WritePlayer.ExportAll(TSPlayer.Server, AutoSaveDir);
-
-        frame = 0;
-
+        // 自动备份逻辑
+        if (Config.AutoSavePlayer)
+        {
+            frame++;
+            if (frame >= Config.AutoSaveInterval * 60 * 60)
+            {
+                WritePlayer.ExportAll(TSPlayer.Server, WritePlayer.AutoSaveDir);
+                frame = 0;
+            }
+        }
     }
     #endregion
 
@@ -437,7 +411,7 @@ public partial class FixTools : TerrariaPlugin
     #region 宝藏袋掉落事件
     private void OnDropBossBag(DropBossBagEventArgs args)
     {
-        if (!Config.TpBag) return;
+        if (!Config.TpBagEnabled) return;
         var npc = Main.npc[args.NpcArrayIndex];
 
         // 计算宝藏袋位置（Boss死亡位置）
@@ -445,21 +419,15 @@ public partial class FixTools : TerrariaPlugin
         var plrs = TShock.Players.Where(p => p != null && p.RealPlayer && p.Active && p.IsLoggedIn).ToList();
         foreach (var plr in plrs)
         {
-            // 初始化玩家的位置列表
-            if (!BagPos.ContainsKey(plr.Name))
-            {
-                BagPos[plr.Name] = new List<Vector2>();
-            }
-
             // 将新的宝藏袋位置添加到列表末尾（最近的在最后）
-            BagPos[plr.Name].Add(bagPos);
+            var data = GetData(plr.Name);
+
+            if (!data.BagPos.Contains(bagPos))
+                data.BagPos.Add(bagPos);
 
             // 限制列表大小，只保留最近10个
-            if (BagPos[plr.Name].Count > 10)
-            {
-                // 移除最早的元素（索引0）
-                BagPos[plr.Name].RemoveAt(0);
-            }
+            if (data.BagPos.Count > 10)
+                data.BagPos.RemoveAt(0);// 移除最早的元素（索引0）
 
             // 处理死亡玩家复活
             if (plr.Dead)
@@ -474,45 +442,46 @@ public partial class FixTools : TerrariaPlugin
         var ItemStack = args.Stack;
         var Icon = ItemIcon(itemID, ItemStack);
 
-
         // 发送击败消息
-       string mess =$"\n[{PluginName}]\n" +
-                    $"恭喜大家击败了[c/FF5149:{npc.FullName}]掉落了{Icon}\n" +
-                    $"获取输出排名:[c/FFFFFF:/boss伤害]\n";
+        string mess = $"\n[{PluginName}]\n" +
+                     $"恭喜大家击败了[c/FF5149:{npc.FullName}]掉落了{Icon}\n" +
+                     $"获取输出排名:[c/FFFFFF:/boss伤害]\n";
 
         if (Config.AllowTpBagText is not null && Config.AllowTpBagText.Count > 0)
         {
             mess += $"发送消息: [c/FF6962:{string.Join(" 或 ", Config.AllowTpBagText)}] 将传送到宝藏袋位置 ";
         }
 
-        TShock.Utils.Broadcast(TextGradient(string.Join("\n", mess)), color);
+        TSPlayer.All.SendMessage(TextGradient(string.Join("\n", mess)), color);
     }
 
     // 处理宝藏袋传送
     private void TpBag(string text, TSPlayer plr)
     {
-        if (!Config.TpBag)
+        if (!Config.TpBagEnabled)
         {
             plr.SendMessage(TextGradient("宝藏袋传送功能未启用!"), color);
             return;
         }
 
+        var data = GetData(plr.Name);
+
         // 检查玩家是否有位置列表
-        if (!BagPos.ContainsKey(plr.Name) || BagPos[plr.Name].Count == 0)
+        if (data.BagPos.Count == 0)
         {
             plr.SendMessage(TextGradient("当前[c/FF5149:没有可用的]宝藏袋位置!"), color);
             return;
         }
 
         // 获取并移除列表的最后一个元素（最近的位置）
-        int lastIndex = BagPos[plr.Name].Count - 1;
-        Vector2 bagPos = BagPos[plr.Name][lastIndex];
+        int lastIndex = data.BagPos.Count - 1;
+        Vector2 bagPos = data.BagPos[lastIndex];
         plr.Teleport(bagPos.X, bagPos.Y);
-        BagPos[plr.Name].RemoveAt(lastIndex);
+        data.BagPos.RemoveAt(lastIndex);
 
         // 显示剩余位置数量
-        var mess = BagPos[plr.Name].Count > 0 ? $"[{PluginName}] 还有 [c/3FAEDB:{BagPos.Count}] 个宝藏袋位置可用" :
-                                                $"[{PluginName}] 这是 [c/FF534A:最后一个] 宝藏袋位置";
+        var mess = data.BagPos.Count > 0 ? $"[{PluginName}] 还有 [c/3FAEDB:{data.BagPos.Count}] 个宝藏袋位置可用" :
+                                           $"[{PluginName}] 这是 [c/FF534A:最后一个] 宝藏袋位置";
 
         plr.SendMessage(TextGradient(mess), color);
     }
@@ -526,7 +495,7 @@ public partial class FixTools : TerrariaPlugin
            !plr.Active || !plr.IsLoggedIn)
             return;
 
-        // 显示功能信息
+        // 原始消息
         var Text = args.Text;
 
         // 检查是否为命令
@@ -538,7 +507,7 @@ public partial class FixTools : TerrariaPlugin
         if (Config.AllowTpBagText is not null && Config.AllowTpBagText.Count > 0)
         {
             // 检查是否包含任意一个关键词
-            if (Config.AllowTpBagText.Any(word => Text.Contains(word)))
+            if (Config.AllowTpBagText.Any(Text.Contains))
             {
                 TpBag(Text, plr);
                 return;
@@ -546,23 +515,31 @@ public partial class FixTools : TerrariaPlugin
         }
 
         // 原有的Motd显示逻辑
-        if (!Config.MotdState)
-            return;
-
-        if (plr.GetData<bool>("motd2"))
+        if (Config.MotdEnabled)
         {
-            if (Config.MotdMess2.Any())
-                plr.SendMessage($"{TextGradient(string.Join("\n", Config.MotdMess2), plr: plr)}", color);
-            plr.RemoveData("motd2");
-            plr.SetData("motd3", DateTime.Now);
-        }
+            var data = GetData(plr.Name);
 
-        TimeSpan sendTime = DateTime.Now - plr.GetData<DateTime?>("motd3")!.Value;
-        if (sendTime.TotalSeconds > 1)
-        {
-            if (Config.MotdMess3.Any())
-                plr.SendMessage($"{TextGradient(string.Join("\n", Config.MotdMess3), plr: plr)}", color);
-            plr.RemoveData("motd3");
+            if (data.Motd == 2)
+            {
+                if (Config.MotdMess2.Any())
+                    plr.SendMessage($"{TextGradient(string.Join("\n", Config.MotdMess2), plr: plr)}", color);
+                data.Motd = 3;
+                data.SendTime = DateTime.Now;
+                return; // 设置完 motd3 后直接返回，避免后续代码执行
+            }
+
+            if (data.Motd == 3)
+            {
+                TimeSpan sendTime = DateTime.Now - data.SendTime;
+                if (sendTime.TotalSeconds > 1)
+                {
+                    if (Config.MotdMess3.Any())
+                        plr.SendMessage($"{TextGradient(string.Join("\n", Config.MotdMess3), plr: plr)}", color);
+
+                    data.Motd = 0;
+                    data.SendTime = DateTime.MinValue;
+                }
+            }
         }
     }
     #endregion
@@ -652,6 +629,142 @@ public partial class FixTools : TerrariaPlugin
         float maxDistanceSq = (Config.NoUseCheatRange * 16) * (Config.NoUseCheatRange * 16);
 
         return distanceSq <= maxDistanceSq;
+    }
+    #endregion
+
+    #region 修复使用物品召唤事件
+    private static readonly object InvtLock = new(); // 入侵事件锁，确保同一时间只有一个入侵被触发
+    private static void StartInvasion(TSPlayer plr)
+    {
+        if (!plr.TPlayer.controlUseItem) return;
+
+        // 检查玩家选中的物品是否为入侵召唤物
+        var sel = plr.SelectedItem;
+
+        // 检查权限
+        if (!plr.HasPermission("tshock.npc.startinvasion"))
+        {
+            plr.SendMessage(TextGradient("[{插件名}] 你没有权限使用召唤入侵物品[c/FF514A:{物品名}]！", plr), color);
+            plr.SendMessage(TextGradient("请通知管理给予权限:\n" +
+                                         "/group addperm default tshock.npc.startinvasion\n", plr), color);
+            return;
+        }
+
+        int Invtype = -1;
+
+        // 只处理特定的入侵物品
+        switch (sel.type)
+        {
+            case ItemID.GoblinBattleStandard: // 哥布林入侵召唤物
+                Invtype = 1;
+                break;
+            case ItemID.SnowGlobe: // 雪人军团召唤物
+                Invtype = 2;
+                break;
+            case ItemID.PirateMap: // 海盗入侵召唤物
+                Invtype = 3;
+                break;
+            default:
+                return;
+        }
+
+        // 使用锁确保同一时间只有一个入侵被触发
+        lock (InvtLock)
+        {
+            // 检查是否已有入侵在进行
+            if (Main.invasionType != 0)
+            {
+                plr.SendMessage(TextGradient($"\n[{PluginName}]\n" +
+                                             $"已有1个入侵事件[c/FF5C57:({GetInvasionName(Main.invasionType)})]进行中！\n" +
+                                             $"使用指令[c/FF5C57:结束]入侵:/worldevent invasion"), color);
+                return;
+            }
+
+            // 消耗物品
+            if (!UseInvasionItem(plr, sel.type))
+                return;
+
+            // 根据超过200血的玩家数，计算入侵规模
+            int MaxLife200_Player = TShock.Players.Count(p => p != null && p.Active && p.TPlayer.statLifeMax >= 200);
+
+            // 设置入侵参数
+            switch (Invtype)
+            {
+                case 1: // 哥布林入侵
+                case 2: // 霜月入侵
+                    Main.invasionSize = 80 + 40 * MaxLife200_Player;
+                    break;
+                case 3: // 海盗入侵
+                    Main.invasionSize = 120 + 60 * MaxLife200_Player;
+                    break;
+                case 4: // 火星人入侵
+                    Main.invasionSize = 160 + 40 * MaxLife200_Player;
+                    break;
+            }
+
+            Main.invasionSizeStart = Main.invasionSize; // 设置入侵初始规模
+            Main.invasionType = Invtype; // 设置入侵类型
+
+            // 设置入侵起始位置
+            if (Invtype == 4) // 火星人特殊处理
+                Main.invasionX = Main.spawnTileX - 1;
+            else
+                Main.invasionX = (Main.rand.Next(2) == 0) ? 0 : Main.maxTilesX;
+
+            // 设置警告状态
+            Main.invasionWarn = (Invtype == 4) ? 2 : 0;
+
+            try
+            {
+                // 开始入侵
+                Main.StartInvasion(Invtype);
+
+                // 发送网络同步
+                NetMessage.SendData(MessageID.WorldData);
+                NetMessage.SendData(MessageID.InvasionProgressReport);
+
+                // 发送全局通知
+                TShock.Utils.Broadcast(TextGradient($"{plr.Name} 召唤了{GetInvasionName(Invtype)}入侵！"), color);
+            }
+            catch (Exception ex)
+            {
+                TShock.Log.ConsoleError($"召唤入侵时发生错误: {ex}");
+                plr.SendMessage("召唤入侵失败，请联系管理员！", Color.Red);
+
+                // 重置入侵状态
+                Main.invasionType = 0;
+                Main.invasionSize = 0;
+                Main.invasionDelay = 0;
+                plr.RemoveData("UsedItem");
+            }
+        }
+    }
+
+    public static bool UseInvasionItem(TSPlayer plr, int itemType)
+    {
+        var sel = plr.SelectedItem;
+
+        if (sel == null || sel.IsAir) return false;
+
+        if (sel.type == itemType)
+        {
+            sel.stack--;
+
+            if (sel.stack == 0)
+                sel.TurnToAir(true);
+
+            // 移除玩家物品
+            plr.SendData(PacketTypes.PlayerSlot, "", plr.Index, plr.TPlayer.selectedItem);
+
+            // 重置现有入侵状态
+            Main.invasionType = 0;
+            Main.invasionSize = 0;
+            Main.invasionDelay = 0;
+
+            return true;
+        }
+
+        return false;
     }
     #endregion
 }

@@ -11,6 +11,8 @@ namespace FixTools;
 
 public class ReaderPlayer
 {
+    public static readonly string ReaderPlrDir = Path.Combine(MainPath, "导入存档"); // 导入角色路径
+
     #region 通过索引导入存档（不带玩家名）
     public static void ReadPlayerByIndex(TSPlayer plr, int idx)
     {
@@ -260,7 +262,7 @@ public class ReaderPlayer
                 {
                     var data2 = new PlayerData(false);
                     CopyData(data.Player, data2);
-                    NeedRestores[plr2.Name] = data2;
+                    PlayerState.GetData(plr2.Name).NeedRestores = data2;
                     plr2.SendMessage($"检测到你已死亡，将在复活后恢复存档物品!", color);
                     return;
                 }
@@ -297,7 +299,7 @@ public class ReaderPlayer
 
     #region 获取与创建账号(自动注册方法)
     public static string newUUID = string.Empty;
-    private static UserAccount GetOrGenerateAccount(Player plr)
+    private static UserAccount? GetOrGenerateAccount(Player plr)
     {
         var ac = TShock.UserAccounts.GetUserAccountByName(plr.name);
         if (ac != null)

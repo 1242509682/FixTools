@@ -3,10 +3,10 @@
 - 作者: 羽学
 - 出处: TShock官方群816771079
 - 这是一个Tshock服务器插件，主要用于：
-自动注册、入服公告、跨版本进服、导入与导出SSC玩家存档、
-执行配置表指令、修改TShock数据表、自动备份存档
-批量修改多组权限、删除指定路径文件、人数进度锁
-复制文件、重置服务器、开服控制台信息等功能
+自动注册、宝藏袋传送、跨版本进服、导入与导出SSC玩家存档、
+执行配置表指令、修改TShock数据表、禁用区域箱子合成材料
+批量修改多组权限、删除指定路径文件、互动入服公告
+复制文件、重置服务器、开服控制台信息、修复物品召唤入侵事件
 - 本插件仅适配于[TShcock非官测试版1454](https://github.com/WindFrost-CSFT/TShock/)
 
 
@@ -16,43 +16,52 @@
 | 语法      |    权限     |        说明        |
 | --------- | :---------: | :----------------: |
 | /pout | pout.use |   指令菜单   |
-| /pout plr | pout.use |   玩家存档管理指令菜单   |
-| /pout plr 玩家名 | pout.use |   导出指定玩家存档,并打包地图   |
-| /pout plr all | pout.use |   导出所有玩家存档,并打包地图,压缩为zip   |
-| /pout plr r | pout.use |   列出《导入存档》文件夹里所有.plr存档   |
-| /pout plr 存档索引 r | pout.use |   将指定存档导入对应玩家   |
-| /pout plr 存档索引 玩家名 r | pout.use |   将指定存档导入给指定玩家   |
-| /pout plr all r | pout.use |   导入所有存档给对应玩家,不存在则创建账号   |
-| /pout save | pout.use |   自动备份存档开关   |
-| /pout save 分钟数 | pout.use |   修改备份存档间隔   |
+| /pout plr | pout.use |   玩家存档管理菜单   |
+| /pout save | pout.use |   自动备份存档菜单   |
 | /pout vs | pout.use |   设置导出版本号   |
 | /pout join | pout.use |   跨版本进服开关   |
+| /pout inv | pout.use |   修复物品召唤入侵事件   |
 | /pout bag | pout.use |   宝藏袋传送开关   |
-| /pout bag 关键词 | pout.use |   修改宝藏袋传送词   |
-| /pout cheat | pout.use |   禁用区域箱子材料   |
-| /pout cheat 格数 | pout.use |   修改禁用区域箱子格数   |
+| /pout chest | pout.use |   禁用区域箱子材料   |
 | /pout motd | pout.use |   进服公告开关,并在开启时广播一次跨版本进服开关   |
 | /pout fix | pout.use |   显示修复地图区块缺失流程   |
-| /pout fix auto | pout.use |   切换自动修复地图开关   |
-| /pout fix yes | pout.use |   确认修复地图区块缺失BUG   |
 | /pout copy | pout.use |   复制文件到配置指定路径   |
 | /pout rm | pout.use |   删除配置指定路径文件   |
 | /pout sql  | pout.use |   修改tshock.sqlite中的指定数据表   |
 | /pout cmd | pout.use |   执行配置中游戏时指令   |
 | /pout reg | pout.use |   自动注册开关(适配CaiBot插件)   |
-| /pout reg 密码 | pout.use |   修改自动注册的默认密码   |
 | /pout add | pout.use |   批量加权限   |
 | /pout del | pout.use |   批量删权限   |
 | /pout lpm | pout.use |   导出权限表   |
 | /pout boss | pout.use |   人数进度锁开关   |
-| /pout boss 人数 | pout.use |   设置解锁人数   |
 | /pout reset | pout.use |   显示重置服务器流程   |
-| /pout reset yes | pout.use |   确认重置服务器   |
 | /reload | tshock.cfg.reload | 重新加载插件配置 |
 
 ## 更新日志
 
 ```
+v20260208 ——1.0.8
+1.加入了修复物品召唤入侵事件
+2.重构/pout save指令
+备份开关:/pout sv on|off
+备份间隔:/pout sv min 分钟
+备份清理:/pout sv cl
+备份保留:/pout sv keep 数量
+备份地图:/pout sv wld
+备份数据:/pout sv sql
+消息显示:/pout sv mag
+加入配置项:
+【自动清理备份】【保留备份数量】
+【备份显示消息】【自动备份地图】
+3.重构/pout plr指令
+导出介绍:/pout p c
+导出所有:/pout p c all
+导出指定:/pout p c 玩家名
+导入介绍:/pout p r
+导入所有:/pout p r all
+导入对应:/pout p r 索引
+导入指定:/pout p r 索引 玩家名
+
 v20260207 ——1.0.7
 适配TShock测试版本号：c5a1747
 1.加入了宝藏袋传送功能,对应开关指令:/pout bag
@@ -174,12 +183,15 @@ v20260201 ——1.0.0
 ```json
 {
   "自建GM权限组": true,
-  "跨版本进服": true,
-  "自动修复地图缺失": true,
+  "启用自动注册": true,
+  "注册默认密码": "123456",
   "自动备份存档": true,
+  "自动备份地图": true,
   "自动备份数据库": true,
   "备份存档分钟数": 30,
-  "导出存档的版本号": 315,
+  "自动清理备份": true,
+  "保留备份数量": 30,
+  "自动备份消息": true,
   "版本号对照参考表": [
     "最新版  : -1",
     "1.4.5.4 : 317",
@@ -187,33 +199,15 @@ v20260201 ——1.0.0
     "1.4.5.0 : 315",
     "1.4.4   : 279"
   ],
-  "清理数据表": [
-    "DELETE FROM tsCharacter",
-    "DELETE FROM Warps",
-    "DELETE FROM Regions",
-    "DELETE FROM Research",
-    "DELETE FROM RememberedPos"
-  ],
-  "删除文件": [
-    "tshock/145修复小公举/权限表/*.txt",
-    "tshock/145修复小公举/自动备份存档/*.zip",
-    "tshock/backups/*.bak",
-    "tshock/logs/*.log",
-    "world/*.wld",
-    "world/*.bak",
-    "world/*.bak2"
-  ],
-  "复制文件输出路径": [
-    "world",
-    "tshock/backups/"
-  ],
-  "启用自动注册": true,
-  "注册默认密码": "123456",
+  "导出存档的版本号": 315,
+  "跨版本进服": true,
   "宝藏袋传送": true,
   "宝藏袋传送关键词": [
     "宝藏袋",
     "bag"
   ],
+  "自动修复地图缺失": true,
+  "修复物品召唤入侵事件": true,
   "禁用区域箱子材料": true,
   "禁用区域箱子范围": 40.0,
   "允许区域合成组": [
@@ -224,43 +218,22 @@ v20260201 ——1.0.0
     "newadmin",
     "trustedadmin"
   ],
-  "启用进服公告": true,
-  "进服公告1": [
-    "\n欢迎 拿着{武器类型}{物品图标}的{玩家名} 来到 {服务器名}",
-    "在线玩家 [c/FFFFFF:({在线人数}/{服务器上限})]: {在线玩家}",
-    "指令:/pout 权限:pout.use",
-    "配置路径: tshock/[c/FF6962:{插件名}]/配置文件.json",
-    "TShock官方Q群:816771079",
-    "所在队伍:{队伍} {同队人数}/{别队人数}",
-    "同队玩家:{同队玩家}",
-    "当前进度:{进度}",
-    "---------",
-    "发送[c/FF6962:任意消息]了解本插件相关功能\n"
+  "重置清理数据表": [
+    "DELETE FROM tsCharacter",
+    "DELETE FROM Warps",
+    "DELETE FROM Regions",
+    "DELETE FROM Research",
+    "DELETE FROM RememberedPos"
   ],
-  "进服公告2": [
-    "---------",
-    "《插件支持功能》适配版本:c5a1747",
-    "[c/FFFFFF:1.]导入导出SSC存档、自动备份存档、禁用区域箱子材料",
-    "[c/FFFFFF:2.]智能进服公告、跨版本进服、自动修复地图区块缺失",
-    "[c/FFFFFF:3.]批量改权限、导出权限表、复制文件、宝藏袋传送",
-    "[c/FFFFFF:4.]自动注册、自动建GM组、自动配权、进度锁、重置服务器",
-    "---------",
-    "发送[c/FF6962:任意消息]显示下条信息\n"
+  "重置时删除文件": [
+    "tshock/145修复小公举/权限表/*.txt",
+    "tshock/145修复小公举/自动备份存档/*.zip",
+    "tshock/backups/*.bak",
+    "tshock/logs/*.log",
+    "world/*.wld",
+    "world/*.bak",
+    "world/*.bak2"
   ],
-  "进服公告3": [
-    "---------",
-    "《小提示》",
-    "人数进度锁开关:/pout boss",
-    "重置服务器流程:/pout reset",
-    "控制台指定管理:/user group {玩家名} GM",
-    "[c/56B7E0:加buff给npc]被踢的[c/FFA562:临时]解决方案",
-    "分配到VIP组: /user group {玩家名} vip",
-    "\n祝您游戏愉快!! [i:3459][c/81C9E8:by] [c/00FFFF:羽学][i:3456]\n"
-  ],
-  "开服后执行指令": [
-    "/worldinfo"
-  ],
-  "游戏时执行指令": [],
   "重置后执行指令": [
     "/off"
   ],
@@ -303,6 +276,49 @@ v20260201 ——1.0.0
     "/重读禁止召唤怪物表",
     "/zresetallplayers",
     "/clearallplayersplus"
+  ],
+  "开服后执行指令": [
+    "/worldinfo"
+  ],
+  "游戏时执行指令": [],
+  "开服自动配权": true,
+  "启用进服公告": true,
+  "进服公告1": [
+    "\n欢迎 拿着{武器类型}{物品图标}的{玩家名} 来到 {服务器名}",
+    "在线玩家 [c/FFFFFF:({在线人数}/{服务器上限})]: {在线玩家}",
+    "指令:/pout 权限:pout.use",
+    "配置路径: tshock/[c/FF6962:{插件名}]/配置文件.json",
+    "TShock官方Q群:816771079",
+    "所在队伍:{队伍} {同队人数}/{别队人数}",
+    "同队玩家:{同队玩家}",
+    "当前进度:{进度}",
+    "---------",
+    "发送[c/FF6962:任意消息]了解本插件相关功能\n"
+  ],
+  "进服公告2": [
+    "---------",
+    "《插件支持功能》适配版本:c5a1747",
+    "[c/FFFFFF:1.]导入导出SSC存档、自动备份存档、禁用区域箱子材料",
+    "[c/FFFFFF:2.]智能进服公告、跨版本进服、修复地图区块缺失",
+    "[c/FFFFFF:3.]批量改权限、导出权限表、复制文件、宝藏袋传送",
+    "[c/FFFFFF:4.]自动注册、自动建GM组、自动配权、进度锁、重置服务器",
+    "[c/FFFFFF:5.]修复物品召唤入侵事件",
+    "---------",
+    "发送[c/FF6962:任意消息]显示下条信息\n"
+  ],
+  "进服公告3": [
+    "---------",
+    "《小提示》",
+    "人数进度锁开关:/pout boss",
+    "重置服务器流程:/pout reset",
+    "控制台指定管理:/user group {玩家名} GM",
+    "[c/56B7E0:加buff给npc]被踢的[c/FFA562:临时]解决方案",
+    "分配到VIP组: /user group {玩家名} vip",
+    "\n祝您游戏愉快!! [i:3459][c/81C9E8:by] [c/00FFFF:羽学][i:3456]\n"
+  ],
+  "复制文件输出路径": [
+    "world",
+    "tshock/backups/"
   ],
   "人数进度锁": false,
   "解锁人数": 3,
@@ -359,7 +375,6 @@ v20260201 ——1.0.0
     "史莱姆皇后",
     "独眼巨鹿"
   ],
-  "开服自动配权": true,
   "批量改权限": {
     "default": [
       "tshock.npc.startinvasion",
