@@ -270,7 +270,7 @@ internal class Utils
         }
 
         return res.ToString();
-    } 
+    }
     #endregion
 
     #region 最好的查找（从枳那抄来的代码）
@@ -642,6 +642,53 @@ internal class Utils
             4 => "火星暴乱",
             _ => "未知"
         };
-    } 
+    }
+    #endregion
+
+    #region 正在使用入侵事件的召唤物品
+    public static bool UseEventItem(TSPlayer plr, HashSet<int> itemType)
+    {
+        var sel = plr.SelectedItem;
+
+        if (sel == null || sel.IsAir) return false;
+
+        if (itemType.Contains(sel.type))
+        {
+            sel.stack--;
+
+            if (sel.stack == 0)
+                sel.TurnToAir(true);
+
+            // 移除玩家物品
+            plr.SendData(PacketTypes.PlayerSlot, "", plr.Index, plr.TPlayer.selectedItem);
+
+            // 重置现有入侵状态
+            Main.invasionType = 0;
+            Main.invasionSize = 0;
+            Main.invasionDelay = 0;
+
+            return true;
+        }
+
+        return false;
+    }
+    #endregion
+
+    #region 获取入侵事件的召唤物品
+    public static HashSet<int> GetEventItemType()
+    {
+        if (Config.MartianEvent)
+        {
+            return new HashSet<int>
+            {
+                ItemID.GoblinBattleStandard,
+                ItemID.SnowGlobe,
+                ItemID.PirateMap,
+                ItemID.TempleKey
+            };
+        }
+
+        return [ItemID.GoblinBattleStandard, ItemID.SnowGlobe, ItemID.PirateMap];
+    }
     #endregion
 }

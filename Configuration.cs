@@ -43,11 +43,13 @@ internal class Configuration
     public bool AutoFixWorld { get; set; } = true;
     [JsonProperty("修复物品召唤入侵事件", Order = -56)]
     public bool FixStartInvasion { get; set; } = true;
-    [JsonProperty("禁用区域箱子材料", Order = -55)]
+    [JsonProperty("石后神庙钥匙召唤火星暴乱", Order = -55)]
+    public bool MartianEvent { get; set; } = true;
+    [JsonProperty("禁用区域箱子材料", Order = -54)]
     public bool NoUseRgionCheat { get; set; } = true;
-    [JsonProperty("禁用区域箱子范围", Order = -54)]
+    [JsonProperty("禁用区域箱子范围", Order = -53)]
     public float NoUseCheatRange { get; set; } = 40;
-    [JsonProperty("允许区域合成组", Order = -53)]
+    [JsonProperty("允许区域合成组", Order = -52)]
     public List<string> AllowRegionGroup { get; set; } = new();
 
     [JsonProperty("重置清理数据表", Order = 1)]

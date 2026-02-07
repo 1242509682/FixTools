@@ -640,9 +640,10 @@ public partial class FixTools : TerrariaPlugin
 
         // 检查玩家选中的物品是否为入侵召唤物
         var sel = plr.SelectedItem;
+        HashSet<int> itemType = GetEventItemType();
 
         // 检查权限
-        if (!plr.HasPermission("tshock.npc.startinvasion"))
+        if (!plr.HasPermission("tshock.npc.startinvasion") && itemType.Contains(sel.type))
         {
             plr.SendMessage(TextGradient("[{插件名}] 你没有权限使用召唤入侵物品[c/FF514A:{物品名}]！", plr), color);
             plr.SendMessage(TextGradient("请通知管理给予权限:\n" +
@@ -664,6 +665,10 @@ public partial class FixTools : TerrariaPlugin
             case ItemID.PirateMap: // 海盗入侵召唤物
                 Invtype = 3;
                 break;
+            case ItemID.TempleKey: // 石后神庙钥匙召唤火星暴乱
+                if(Main.hardMode && NPC.downedGolemBoss && Config.MartianEvent)
+                Invtype = 4;
+                break;
             default:
                 return;
         }
@@ -681,7 +686,7 @@ public partial class FixTools : TerrariaPlugin
             }
 
             // 消耗物品
-            if (!UseInvasionItem(plr, sel.type))
+            if (!UseEventItem(plr, itemType))
                 return;
 
             // 根据超过200血的玩家数，计算入侵规模
@@ -735,36 +740,8 @@ public partial class FixTools : TerrariaPlugin
                 Main.invasionType = 0;
                 Main.invasionSize = 0;
                 Main.invasionDelay = 0;
-                plr.RemoveData("UsedItem");
             }
         }
-    }
-
-    public static bool UseInvasionItem(TSPlayer plr, int itemType)
-    {
-        var sel = plr.SelectedItem;
-
-        if (sel == null || sel.IsAir) return false;
-
-        if (sel.type == itemType)
-        {
-            sel.stack--;
-
-            if (sel.stack == 0)
-                sel.TurnToAir(true);
-
-            // 移除玩家物品
-            plr.SendData(PacketTypes.PlayerSlot, "", plr.Index, plr.TPlayer.selectedItem);
-
-            // 重置现有入侵状态
-            Main.invasionType = 0;
-            Main.invasionSize = 0;
-            Main.invasionDelay = 0;
-
-            return true;
-        }
-
-        return false;
     }
     #endregion
 }
