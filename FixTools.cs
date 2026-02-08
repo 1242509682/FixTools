@@ -303,41 +303,6 @@ public partial class FixTools : TerrariaPlugin
     }
     #endregion
 
-    #region 跨版本进服方法
-    private void OnNetGetData(GetDataEventArgs args)
-    {
-        if (args.MsgID != PacketTypes.ConnectRequest || !Config.NoVisualLimit) return;
-
-        args.Handled = true;
-
-        if (Main.netMode is not 2) return;
-
-        RemoteClient client = Netplay.Clients[args.Msg.whoAmI];
-        RemoteAddress ip = client.Socket.GetRemoteAddress();
-
-        if (Main.dedServ && Netplay.IsBanned(ip))
-        {
-            // 因封禁,禁止玩家连接
-            NetMessage.TrySendData(MessageID.Kick, args.Msg.whoAmI, -1, Lang.mp[3].ToNetworkText());
-        }
-        else if (client.State == 0)
-        {
-            if (string.IsNullOrEmpty(Netplay.ServerPassword))
-            {
-                // 无密码服务器，直接通过
-                client.State = 1;
-                NetMessage.TrySendData(MessageID.PlayerInfo, args.Msg.whoAmI);
-            }
-            else
-            {
-                // 需要密码验证
-                client.State = -1;
-                NetMessage.TrySendData(MessageID.RequestPassword, args.Msg.whoAmI);
-            }
-        }
-    }
-    #endregion
-
     #region 人数进度锁
     private void OnNpcAIUpdate(NpcAiUpdateEventArgs args)
     {
@@ -666,8 +631,8 @@ public partial class FixTools : TerrariaPlugin
                 Invtype = 3;
                 break;
             case ItemID.TempleKey: // 石后神庙钥匙召唤火星暴乱
-                if(Main.hardMode && NPC.downedGolemBoss && Config.MartianEvent)
-                Invtype = 4;
+                if (Main.hardMode && NPC.downedGolemBoss && Config.MartianEvent)
+                    Invtype = 4;
                 break;
             default:
                 return;
@@ -744,4 +709,86 @@ public partial class FixTools : TerrariaPlugin
         }
     }
     #endregion
+
+    #region 跨版本进服 + 自动修复NpcAddBuff方法
+    private void OnNetGetData(GetDataEventArgs args)
+    {
+        if (args.MsgID == PacketTypes.ConnectRequest && Config.NoVisualLimit)
+        {
+            args.Handled = true;
+
+            if (Main.netMode is not 2) return;
+
+            RemoteClient client = Netplay.Clients[args.Msg.whoAmI];
+            RemoteAddress ip = client.Socket.GetRemoteAddress();
+
+            if (Main.dedServ && Netplay.IsBanned(ip))
+            {
+                // 因封禁,禁止玩家连接
+                NetMessage.TrySendData(MessageID.Kick, args.Msg.whoAmI, -1, Lang.mp[3].ToNetworkText());
+            }
+            else if (client.State == 0)
+            {
+                if (string.IsNullOrEmpty(Netplay.ServerPassword))
+                {
+                    // 无密码服务器，直接通过
+                    client.State = 1;
+                    NetMessage.TrySendData(MessageID.PlayerInfo, args.Msg.whoAmI);
+                }
+                else
+                {
+                    // 需要密码验证
+                    client.State = -1;
+                    NetMessage.TrySendData(MessageID.RequestPassword, args.Msg.whoAmI);
+                }
+            }
+        }
+        else if (args.MsgID == PacketTypes.NpcAddBuff && Config.FixNpcBuffKick)
+        {
+            // 获取数据
+            using var reader = new BinaryReader(new MemoryStream(args.Msg.readBuffer, args.Index, args.Length));
+            short npcId = reader.ReadInt16(); // 修改id变量名为npcId，避免混淆
+            int type = reader.ReadInt32();   // buff类型
+            short time = reader.ReadInt16(); // buff时间
+
+            // 获取玩家
+            var plr = TShock.Players[args.Msg.whoAmI];
+            if (plr == null) return;
+
+            // 检查是否在字典中
+            if (!Bouncer.NPCAddBuffTimeMax.TryGetValue(type, out short maxTime))
+                return;
+
+            // 如果时间超过最大值
+            if (time > maxTime)
+            {
+                // 计算新值（增加10%容错）
+                short newTime = (short)(time * (1 + Config.FixBuffTolerance));
+
+                // 更新TShock字典
+                Bouncer.NPCAddBuffTimeMax[type] = newTime;
+
+                // 更新插件配置
+                if (Config.FixBuffTime.ContainsKey(type))
+                    Config.FixBuffTime[type] = newTime;
+                else
+                    Config.FixBuffTime.Add(type, newTime);
+
+                // 保存配置
+                Config.Write();
+
+                // 修改数据包中的时间值
+                args.Handled = true;
+
+                // 重新发送修正后的数据包
+                NetMessage.SendData((int)PacketTypes.NpcAddBuff, args.Msg.whoAmI, -1, null, npcId, type, newTime);
+
+                // 记录日志
+                TShock.Log.ConsoleInfo($"[{PluginName}] 更新{Lang.GetNPCNameValue(npcId)}({npcId})buff:\n" +
+                                       $"{Lang.GetBuffName(type)}({type}): {maxTime} -> {newTime}, 玩家: {plr.Name}");
+            }
+        }
+    }
+    #endregion
+
 }
