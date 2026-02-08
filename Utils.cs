@@ -691,4 +691,55 @@ internal class Utils
         return [ItemID.GoblinBattleStandard, ItemID.SnowGlobe, ItemID.PirateMap];
     }
     #endregion
+
+    #region 修复添加NPC增益被踢出(废案)
+    //public static void FixNpcBuffKick(TerrariaApi.Server.GetDataEventArgs args)
+    //{
+    //    if (args.MsgID == PacketTypes.NpcAddBuff && Config.FixNpcBuffKick)
+    //    {
+    //        // 获取数据
+    //        using var reader = new BinaryReader(new MemoryStream(args.Msg.readBuffer, args.Index, args.Length));
+    //        short npcId = reader.ReadInt16(); // 修改id变量名为npcId，避免混淆
+    //        int type = reader.ReadInt32();   // buff类型
+    //        short time = reader.ReadInt16(); // buff时间
+
+    //        // 获取玩家
+    //        var plr = TShock.Players[args.Msg.whoAmI];
+    //        if (plr == null) return;
+
+    //        // 检查是否在字典中
+    //        if (!Bouncer.NPCAddBuffTimeMax.TryGetValue(type, out short maxTime))
+    //            return;
+
+    //        // 如果时间超过最大值
+    //        if (time > maxTime)
+    //        {
+    //            // 计算新值（增加10%容错）
+    //            short newTime = (short)(time * (1 + Config.FixBuffTolerance));
+
+    //            // 更新TShock字典
+    //            Bouncer.NPCAddBuffTimeMax[type] = newTime;
+
+    //            // 更新插件配置
+    //            if (Config.FixBuffTime.ContainsKey(type))
+    //                Config.FixBuffTime[type] = newTime;
+    //            else
+    //                Config.FixBuffTime.Add(type, newTime);
+
+    //            // 保存配置
+    //            Config.Write();
+
+    //            // 修改数据包中的时间值
+    //            args.Handled = true;
+
+    //            // 重新发送修正后的数据包
+    //            NetMessage.SendData((int)PacketTypes.NpcAddBuff, args.Msg.whoAmI, -1, null, npcId, type, newTime);
+
+    //            // 记录日志
+    //            TShock.Log.ConsoleInfo($"[{PluginName}] 更新{Lang.GetNPCNameValue(npcId)}({npcId})buff:\n" +
+    //                                   $"{Lang.GetBuffName(type)}({type}): {maxTime} -> {newTime}, 玩家: {plr.Name}");
+    //        }
+    //    }
+    //}
+    #endregion
 }

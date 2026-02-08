@@ -1,14 +1,14 @@
-﻿using Terraria;
+﻿using Microsoft.Xna.Framework;
+using On.Terraria.GameContent;
+using Terraria;
 using Terraria.ID;
 using Terraria.Net;
+using TerrariaApi.Server;
 using TShockAPI;
 using TShockAPI.DB;
 using TShockAPI.Hooks;
-using TerrariaApi.Server;
-using Microsoft.Xna.Framework;
-using On.Terraria.GameContent;
-using static FixTools.Utils;
 using static FixTools.PlayerState;
+using static FixTools.Utils;
 
 namespace FixTools;
 
@@ -18,7 +18,7 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 2, 8);
+    public override Version Version => new(2026, 2, 9);
     public override string Description => "本插件仅TShock测试版期间维护,指令/pout";
     #endregion
 
@@ -59,6 +59,7 @@ public partial class FixTools : TerrariaPlugin
         ServerApi.Hooks.ServerJoin.Register(this, OnServerJoin);
         ServerApi.Hooks.ServerLeave.Register(this, this.OnServerLeave);
         GetDataHandlers.PlayerUpdate.Register(this.OnPlayerUpdate);
+        GetDataHandlers.PlaceObject.Register(this.OnPlaceObject);
         ServerApi.Hooks.NetGetData.Register(this, OnNetGetData);
         ServerApi.Hooks.GameUpdate.Register(this, OnGameUpdate);
         ServerApi.Hooks.NpcAIUpdate.Register(this, OnNpcAIUpdate);
@@ -79,6 +80,7 @@ public partial class FixTools : TerrariaPlugin
             ServerApi.Hooks.ServerJoin.Deregister(this, OnServerJoin);
             ServerApi.Hooks.ServerLeave.Deregister(this, this.OnServerLeave);
             GetDataHandlers.PlayerUpdate.UnRegister(this.OnPlayerUpdate);
+            GetDataHandlers.PlaceObject.UnRegister(this.OnPlaceObject);
             ServerApi.Hooks.NetGetData.Deregister(this, OnNetGetData);
             ServerApi.Hooks.GameUpdate.Deregister(this, OnGameUpdate);
             ServerApi.Hooks.NpcAIUpdate.Deregister(this, OnNpcAIUpdate);
@@ -710,7 +712,7 @@ public partial class FixTools : TerrariaPlugin
     }
     #endregion
 
-    #region 跨版本进服 + 自动修复NpcAddBuff方法
+    #region 跨版本进服方法
     private void OnNetGetData(GetDataEventArgs args)
     {
         if (args.MsgID == PacketTypes.ConnectRequest && Config.NoVisualLimit)
@@ -743,51 +745,87 @@ public partial class FixTools : TerrariaPlugin
                 }
             }
         }
-        else if (args.MsgID == PacketTypes.NpcAddBuff && Config.FixNpcBuffKick)
+
+        // FixNpcBuffKick(args);
+    }
+    #endregion
+
+    #region 修复天塔柱刷物品BUG（放置BUG流程为：4个金属锭、1个金箱、挖掉底下2个金属锭、底部放工作台、挖掉金箱、放置天塔柱）
+    private void OnPlaceObject(object? sender, GetDataHandlers.PlaceObjectEventArgs e)
+    {
+        var plr = e.Player;
+        if (plr is null || !plr.RealPlayer || !plr.Active || !plr.IsLoggedIn || !Config.FixPlaceObject)
+            return;
+
+        // 检查是否为天塔柱等目标物品
+        if (TargetItem(e.Type))
         {
-            // 获取数据
-            using var reader = new BinaryReader(new MemoryStream(args.Msg.readBuffer, args.Index, args.Length));
-            short npcId = reader.ReadInt16(); // 修改id变量名为npcId，避免混淆
-            int type = reader.ReadInt32();   // buff类型
-            short time = reader.ReadInt16(); // buff时间
-
-            // 获取玩家
-            var plr = TShock.Players[args.Msg.whoAmI];
-            if (plr == null) return;
-
-            // 检查是否在字典中
-            if (!Bouncer.NPCAddBuffTimeMax.TryGetValue(type, out short maxTime))
-                return;
-
-            // 如果时间超过最大值
-            if (time > maxTime)
+            // 检查下方一格
+            int checkY = e.Y + 1;
+            if (checkY < Main.maxTilesY && Main.tile[e.X, checkY].active())
             {
-                // 计算新值（增加10%容错）
-                short newTime = (short)(time * (1 + Config.FixBuffTolerance));
+                // 获取下方的图格对象
+                var tile = Main.tile[e.X, checkY];
 
-                // 更新TShock字典
-                Bouncer.NPCAddBuffTimeMax[type] = newTime;
-
-                // 更新插件配置
-                if (Config.FixBuffTime.ContainsKey(type))
-                    Config.FixBuffTime[type] = newTime;
-                else
-                    Config.FixBuffTime.Add(type, newTime);
-
-                // 保存配置
-                Config.Write();
-
-                // 修改数据包中的时间值
-                args.Handled = true;
-
-                // 重新发送修正后的数据包
-                NetMessage.SendData((int)PacketTypes.NpcAddBuff, args.Msg.whoAmI, -1, null, npcId, type, newTime);
-
-                // 记录日志
-                TShock.Log.ConsoleInfo($"[{PluginName}] 更新{Lang.GetNPCNameValue(npcId)}({npcId})buff:\n" +
-                                       $"{Lang.GetBuffName(type)}({type}): {maxTime} -> {newTime}, 玩家: {plr.Name}");
+                // 如果下方是金属锭或传送机
+                if (tile.type == TileID.MetalBars || tile.type == TileID.Teleporter)
+                {
+                    // 清理金属锭和上面的天塔柱
+                    ClearBugTiles(plr, e.X, e.Y, e.X, checkY);
+                }
             }
         }
+    }
+
+    private void ClearBugTiles(TSPlayer plr, int topX, int topY, int botX, int botY)
+    {
+        // 清理天塔柱
+        Main.tile[topX, topY].ClearEverything();
+
+        // 清理金属锭
+        Main.tile[botX, botY].ClearEverything();
+        Main.tile[botX -1, botY].ClearEverything();
+
+        // 发送更新给所有玩家
+        TSPlayer.All.SendTileSquareCentered(topX, topY, 2);
+
+        for (int i = 0; i < TShock.Players.Length; i++)
+        {
+            for (int j = 0; j < Main.maxSectionsX; j++)
+            {
+                for (int k = 0; k < Main.maxSectionsY; k++)
+                {
+                    Netplay.Clients[i].TileSections[j, k] = false;
+                }
+            }
+        }
+
+        plr.SendMessage(TextGradient("[{插件名}] 检测到刷物品BUG！正在清理..."), color);
+    }
+
+    private bool TargetItem(short type)
+    {
+        // 目标物品列表
+        int[] targetList =
+        {
+
+            TileID.LunarMonolith,      // 天塔柱
+            TileID.WaterFountain,      // 喷泉
+            TileID.Cannon,             // 各种大炮
+            TileID.SnowballLauncher,   // 雪球发射器
+            TileID.MusicBoxes,         // 八音盒
+            TileID.BloodMoonMonolith,  // 血月天塔柱
+            TileID.ShimmerMonolith,    // 以太天塔柱
+            TileID.ShadowCandle,       // 暗影蜡烛
+            TileID.PeaceCandle,        // 和平蜡烛
+            TileID.Candelabras,        // 烛台
+            TileID.PlatinumCandelabra, // 铂金烛台
+            TileID.PlatinumCandelabra, // 铂金蜡烛
+            TileID.Lamps,              // 柱式灯
+            TileID.Lever,              // 遥控杆
+        };
+
+        return Array.IndexOf(targetList, type) >= 0;
     }
     #endregion
 

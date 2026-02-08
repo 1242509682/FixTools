@@ -33,12 +33,15 @@ internal class Configuration
     [JsonProperty("版本号对照参考表", Order = -75)]
     public HashSet<string> Example { get; set; } = [];
 
-    [JsonProperty("修复添加NPC增益踢人", Order = -57)]
-    public bool FixNpcBuffKick { get; set; } = true;
-    [JsonProperty("修复容错比例", Order = -58)]
-    public float FixBuffTolerance { get; set; } = 0.1f;
-    [JsonProperty("NPC增益修正表", Order = -59)]
-    public Dictionary<int,short> FixBuffTime { get; set; } = new();
+    #region 废案
+    //[JsonProperty("修复添加NPC增益踢人", Order = -57)]
+    //public bool FixNpcBuffKick { get; set; } = true;
+    //[JsonProperty("修复容错比例", Order = -58)]
+    //public float FixBuffTolerance { get; set; } = 0.1f;
+    //[JsonProperty("NPC增益修正表", Order = -59)] 
+    //public Dictionary<int, short> FixBuffTime { get; set; } = new();
+    #endregion
+
     [JsonProperty("跨版本进服", Order = -60)]
     public bool NoVisualLimit { get; set; } = true;
     [JsonProperty("宝藏袋传送", Order = -59)]
@@ -49,13 +52,15 @@ internal class Configuration
     public bool AutoFixWorld { get; set; } = true;
     [JsonProperty("修复物品召唤入侵事件", Order = -56)]
     public bool FixStartInvasion { get; set; } = true;
-    [JsonProperty("石后神庙钥匙召唤火星暴乱", Order = -55)]
+    [JsonProperty("修复天塔柱刷物品BUG", Order = -55)]
+    public bool FixPlaceObject { get; set; } = true;
+    [JsonProperty("石后神庙钥匙召唤火星暴乱", Order = -54)]
     public bool MartianEvent { get; set; } = true;
-    [JsonProperty("禁用区域箱子材料", Order = -54)]
+    [JsonProperty("禁用区域箱子材料", Order = -53)]
     public bool NoUseRgionCheat { get; set; } = true;
-    [JsonProperty("禁用区域箱子范围", Order = -53)]
+    [JsonProperty("禁用区域箱子范围", Order = -52)]
     public float NoUseCheatRange { get; set; } = 40;
-    [JsonProperty("允许区域合成组", Order = -52)]
+    [JsonProperty("允许区域合成组", Order = -51)]
     public List<string> AllowRegionGroup { get; set; } = new();
 
     [JsonProperty("重置清理数据表", Order = 1)]
@@ -135,7 +140,7 @@ internal class Configuration
             "[c/FFFFFF:2.]智能进服公告、跨版本进服、修复地图区块缺失",
             "[c/FFFFFF:3.]批量改权限、导出权限表、复制文件、宝藏袋传送",
             "[c/FFFFFF:4.]自动注册、自动建GM组、自动配权、进度锁、重置服务器",
-            "[c/FFFFFF:5.]修复物品召唤入侵事件",
+            "[c/FFFFFF:5.]修复物品召唤入侵事件、修复天塔柱刷物品BUG",
             "---------",
             "发送[c/FF6962:任意消息]显示下条信息\n",
         ];

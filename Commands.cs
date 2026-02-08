@@ -30,6 +30,7 @@ internal class Commands
             mess.AppendLine($"/{CmdName} motd ——进服公告开关");
             mess.AppendLine($"/{CmdName} fix ——修复地图区块缺失");
             mess.AppendLine($"/{CmdName} inv ——修复物品召唤入侵事件");
+            mess.AppendLine($"/{CmdName} ttz ——修复天塔柱刷物品BUG");
             mess.AppendLine($"/{CmdName} cb ——复制文件");
             mess.AppendLine($"/{CmdName} rm ——删除文件");
             mess.AppendLine($"/{CmdName} sql ——改数据表");
@@ -54,6 +55,7 @@ internal class Commands
                             $"/{CmdName} motd ——进服公告开关\n" +
                             $"/{CmdName} fix ——修复地图区块缺失\n" +
                             $"/{CmdName} inv ——修复物品召唤入侵事件\n" +
+                            $"/{CmdName} ttz ——修复天塔柱刷物品BUG\n" +
                             $"/{CmdName} copy ——复制文件\n" +
                             $"/{CmdName} rm ——删除文件\n" +
                             $"/{CmdName} sql ——改数据表\n" +
@@ -174,7 +176,7 @@ internal class Commands
 
                 case "改数据":
                 case "sql":
-                    ClearSql(plr);
+                    ClearSqlInfo(args,plr);
                     break;
 
                 case "命令":
@@ -192,13 +194,18 @@ internal class Commands
                 case "删文件":
                 case "删除文件":
                 case "rm":
-                    DeleteFile(plr);
+                    DeleteFileInfo(args,plr);
                     break;
 
                 case "修复入侵":
                 case "入侵":
                 case "inv":
                     SwitchFixStartInvasion(plr);
+                    break;
+
+                case "天塔柱":
+                case "ttz":
+                    SetFixPlaceObject(plr);
                     break;
 
                 case "修复地图":
@@ -616,6 +623,16 @@ internal class Commands
     }
     #endregion
 
+    #region 设置修复天塔柱刷物品BUG开关
+    private static void SetFixPlaceObject(TSPlayer plr)
+    {
+        Config.FixPlaceObject = !Config.FixPlaceObject;
+        Config.Write();
+        var state = Config.FixPlaceObject ? "开启" : "关闭";
+        plr.SendMessage($"修复天塔柱刷物品BUG已切换为 {state}", color);
+    }
+    #endregion
+
     #region 设置导出角色版本号
     private static void SetGameVersion(CommandArgs args, TSPlayer plr)
     {
@@ -856,6 +873,19 @@ internal class Commands
     #endregion
 
     #region 清理tshock.sqlite方法
+    private static void ClearSqlInfo(CommandArgs args,TSPlayer plr)
+    {
+        // 检查是否有确认参数
+        if (args.Parameters.Count < 2 || !args.Parameters[1].Equals("yes", StringComparison.OrdinalIgnoreCase))
+        {
+            plr.SendMessage(TextGradient($"此操作会清理tshock.sqlite数据库中的指定数据表，且不可逆转！"), color);
+            plr.SendMessage($"确认操作请输入:/{CmdName} sql yes", color);
+            return;
+        }
+
+        ClearSql(plr);
+    }
+
     private static void ClearSql(TSPlayer plr)
     {
         var ok = 0;
@@ -878,6 +908,19 @@ internal class Commands
     #endregion
 
     #region 删除文件方法
+    private static void DeleteFileInfo(CommandArgs args, TSPlayer plr)
+    {
+        // 检查是否有确认参数
+        if (args.Parameters.Count < 2 || !args.Parameters[1].Equals("yes", StringComparison.OrdinalIgnoreCase))
+        {
+            plr.SendMessage(TextGradient($"此操作会清理当前地图与地图备份、自动备份存档、服务器日志，且不可逆转！"), color);
+            plr.SendMessage($"确认操作请输入:/{CmdName} rm yes", color);
+            return;
+        }
+
+        DeleteFile(plr);
+    }
+
     private static void DeleteFile(TSPlayer plr)
     {
         try
