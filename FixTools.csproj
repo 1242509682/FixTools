@@ -14,9 +14,11 @@
   <ItemGroup>
     <Reference Include="TerrariaServer">
       <HintPath>依赖项\TerrariaServer.dll</HintPath>
+		<Private>False</Private>
     </Reference>
     <Reference Include="TShockAPI">
       <HintPath>依赖项\TShockAPI.dll</HintPath>
+		<Private>False</Private>
     </Reference>
   </ItemGroup>
 
