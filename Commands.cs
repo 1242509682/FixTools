@@ -280,7 +280,7 @@ internal class Commands
         info.AppendLine($"6.检测【{Path.GetFileName(MapDir)}】是否有地图文件:");
         info.AppendLine("有: 随机选择地图并改名SFE4.wld复制world文件夹");
         info.AppendLine("没有: 根据server.properties内的参数创建新地图");
-        info.AppendLine("7.重置后执行关服,根据启动项自动重启");
+        info.AppendLine("7.重置后执行关服不保存,根据启动项自动重启");
 
         info.AppendLine($"\n确认重置请输入: /{CmdName} reset yes");
         info.AppendLine("警告: 此操作不可逆，请确保已备份重要数据!");
@@ -976,7 +976,7 @@ internal class Commands
             }
 
             if (ok > 0)
-                plr.SendMessage($"已删除文件{ok}个", color);
+                plr.SendMessage($"已删除文件{ok}个,如包含启动地图,请使用 /off-nosave 并重启", color);
         }
         catch (Exception ex)
         {
@@ -1417,15 +1417,9 @@ internal class Commands
         Config.UnLockNpc.Clear();
         Config.Write();
 
-        Main.WorldFileMetadata = null; // 清除缓存的世界元数据 确保完成删除地图
-        Main.gameMenu = true; // 回到主菜单
-        Main.menuMode = MenuID.Status; // 状态菜单
-
         DeleteFile(plr); // 删除文件含地图
         RandomCopyMap(plr);
         DoCommand(plr, Config.AfterCMD); // 执行关服指令 让自动重启启动项创建新地图 重启也能清空TS程序内存
-        for (var i = 10; i >= 0; i--)
-            Console.WriteLine("注意:已清除世界元数据.请忽略以下因自动保存引起的报错");
     }
     #endregion
 

@@ -185,7 +185,7 @@ internal class Configuration
 
         PostCMD = ["/worldinfo"];
 
-        AfterCMD = ["/off"];
+        AfterCMD = ["/off-nosave"];
 
         AllowTpBagText = 
         [
