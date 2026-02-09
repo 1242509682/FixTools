@@ -78,6 +78,46 @@ internal class Commands
     }
     #endregion
 
+    #region 统一布尔配置项切换方法
+    private static void SetBool(string desc, TSPlayer plr, Func<bool> getVal, Action<bool> setVal)
+    {
+        bool cur = getVal();
+        bool newVal = !cur;
+        setVal(newVal);
+        Config.Write();
+        var state = newVal ? "开启" : "关闭";
+        plr.SendMessage($"{desc}已切换为 {state}", color);
+    }
+    #endregion
+
+    #region 统一设置数值配置方法
+    private static void SetNum(string desc, TSPlayer plr, Action<int> setVal, string num, string unit = "")
+    {
+        if (!int.TryParse(num, out int val))
+        {
+            plr.SendMessage($"请输入正确数字 如: {desc} {unit}", color);
+            return;
+        }
+
+        setVal(val);
+        Config.Write();
+        plr.SendMessage($"{desc}已设置为 {val}{unit}", color);
+    }
+
+    private static void SetFloat(string desc, TSPlayer plr, Action<float> setVal, string num, string unit = "")
+    {
+        if (!float.TryParse(num, out float val))
+        {
+            plr.SendMessage($"请输入正确数字 如: {desc} {unit}", color);
+            return;
+        }
+
+        setVal(val);
+        Config.Write();
+        plr.SendMessage($"{desc}已设置为 {val}{unit}", color);
+    }
+    #endregion
+
     #region 主指令方法
     internal static void pout(CommandArgs args)
     {
@@ -123,7 +163,7 @@ internal class Commands
                 case "j":
                 case "join":
                 case "跨版本":
-                    NoVisualLimit(args, plr);
+                    SetBool("跨版本进服", plr, () => Config.NoVisualLimit, (val) => Config.NoVisualLimit = val);
                     break;
 
                 case "版本":
@@ -134,7 +174,7 @@ internal class Commands
 
                 case "公告":
                 case "motd":
-                    SwitchMotd(plr);
+                    SetBool("进服公告", plr, () => Config.MotdEnabled, (val) => Config.MotdEnabled = val);
                     break;
 
                 case "bag":
@@ -200,12 +240,12 @@ internal class Commands
                 case "修复入侵":
                 case "入侵":
                 case "inv":
-                    SwitchFixStartInvasion(plr);
+                    SetBool("修复物品召唤入侵事件", plr, () => Config.FixStartInvasion, (val) => Config.FixStartInvasion = val);
                     break;
 
                 case "天塔柱":
                 case "ttz":
-                    SetFixPlaceObject(plr);
+                    SetBool("修复天塔柱刷物品BUG", plr, () => Config.FixPlaceObject, (val) => Config.FixPlaceObject = val);
                     break;
 
                 case "修复地图":
@@ -239,56 +279,104 @@ internal class Commands
     }
     #endregion
 
-    #region 显示世界区块缺失的修复信息
-    public static void ShowFixInfo(TSPlayer plr)
+    #region 自动备份指令
+    private static void AutoSave(CommandArgs args, TSPlayer plr)
     {
-        var info = new StringBuilder();
-        info.AppendLine("修复地图区块缺失流程：");
-        info.AppendLine("1.检测当前地图尺寸（小/中/大）");
-        info.AppendLine("2.修改 server.properties 中的 autocreate 值");
-        info.AppendLine("4.进入10秒倒计时");
-        info.AppendLine("4.踢出在线玩家确保数据保存,关闭服务器");
-        info.AppendLine("5.根据启动项,重启服务器后生效");
+        if (args.Parameters.Count < 2)
+        {
+            ShowSaveSet(plr);
+            return;
+        }
 
-        info.AppendLine($"\n自动修复开关: /{CmdName} fix auto");
-        info.AppendLine("注:自动修复会在刚开服后执行工作并立即重启");
-        info.AppendLine($"\n确认修复请输入: /{CmdName} fix yes");
-        info.AppendLine("注:此操作会重启服务器，请确保已通知在线玩家!");
+        switch (args.Parameters[1].ToLower())
+        {
+            case "on":
+            case "off":
+                SetBool("自动备份", plr, () => Config.AutoSavePlayer, (val) => Config.AutoSavePlayer = val);
+                break;
 
-        if (!plr.RealPlayer)
-            plr.SendMessage(info.ToString(), color);
-        else
-            plr.SendMessage(TextGradient(info.ToString()), color);
+            case "min":
+            case "int":
+            case "interval":
+            case "分钟":
+                if (args.Parameters.Count < 3)
+                {
+                    plr.SendMessage($"用法: /{CmdName} sv min <分钟数>", color);
+                    plr.SendMessage($"当前间隔: {Config.AutoSaveInterval}分钟", color2);
+                    return;
+                }
+                SetNum("备份间隔", plr, (val) => Config.AutoSaveInterval = val, args.Parameters[2], "分钟");
+                break;
+
+            case "cl":
+            case "clear":
+            case "clean":
+            case "清理":
+                SetBool("自动清理备份", plr, () => Config.AutoClean, (val) => Config.AutoClean = val);
+                break;
+
+            case "keep":
+            case "保留":
+                if (args.Parameters.Count < 3)
+                {
+                    plr.SendMessage($"用法: /{CmdName} save keep <数量>", color);
+                    plr.SendMessage($"当前保留: {Config.MaxBackup}个", color2);
+                    return;
+                }
+                SetNum("保留备份数量", plr, (val) => Config.MaxBackup = val, args.Parameters[2], "个");
+                break;
+
+            case "wld":
+            case "world":
+            case "地图":
+                SetBool("自动备份地图", plr, () => Config.AutoSaveWorld, (val) => Config.AutoSaveWorld = val);
+                break;
+
+            case "sql":
+            case "sqlite":
+            case "数据库":
+                SetBool("自动备份数据库", plr, () => Config.AutoSaveSqlite, (val) => Config.AutoSaveSqlite = val);
+                break;
+
+            case "mag":
+            case "msg":
+            case "mess":
+            case "消息":
+                SetBool("自动备份消息显示", plr, () => Config.ShowAutoSaveMsg, (val) => Config.ShowAutoSaveMsg = val);
+                break;
+
+            default:
+                ShowSaveSet(plr);
+                break;
+        }
     }
     #endregion
 
-    #region 显示重置信息
-    private static void ShowResetInfo(TSPlayer plr)
+    #region 显示备份设置
+    private static void ShowSaveSet(TSPlayer plr)
     {
-        var info = new StringBuilder();
-        info.AppendLine("重置服务器流程：");
-        info.AppendLine("1.自动导出所有SSC玩家存档并打包地图");
-        info.AppendLine("2.重置前执行:其他插件的清理数据指令");
-        info.AppendLine("3.清理tshock.sqlite数据库");
-        info.AppendLine(" tsCharacter - 强制开荒背包");
-        info.AppendLine(" Warps - 地标传送点");
-        info.AppendLine(" Regions - 区域领地坐标");
-        info.AppendLine(" Research - 旅途研究");
-        info.AppendLine(" RememberedPos - 回服传送记录点");
-        info.AppendLine("4.清理已解锁怪物表中的怪物名称");
-        info.AppendLine("5.删除指定文件(当前地图备份、日志文件)");
-        info.AppendLine($"6.检测【{Path.GetFileName(MapDir)}】是否有地图文件:");
-        info.AppendLine("有: 随机选择地图并改名SFE4.wld复制world文件夹");
-        info.AppendLine("没有: 根据server.properties内的参数创建新地图");
-        info.AppendLine("7.重置后执行关服不保存,根据启动项自动重启");
+        var state1 = Config.AutoSavePlayer ? "开" : "关";
+        var state2 = $"{Config.AutoSaveInterval}";
+        var state3 = Config.AutoClean ? "开" : "关";
+        var state4 = $"{Config.MaxBackup}";
+        var state5 = Config.AutoSaveWorld ? "开" : "关";
+        var state6 = Config.AutoSaveSqlite ? "开" : "关";
+        var state7 = Config.ShowAutoSaveMsg ? "开" : "关";
 
-        info.AppendLine($"\n确认重置请输入: /{CmdName} reset yes");
-        info.AppendLine("警告: 此操作不可逆，请确保已备份重要数据!");
+        var mess = new StringBuilder();
+        mess.AppendLine($"\n[c/AD89D5:自动备份设置]");
+        mess.AppendLine($"[c/3FAEDB:备份][{state1}] /{CmdName} sv on");
+        mess.AppendLine($"[c/3FAEDB:间隔][{state2}] /{CmdName} sv min <分钟>");
+        mess.AppendLine($"[c/3FAEDB:清理][{state3}] /{CmdName} sv clear");
+        mess.AppendLine($"[c/3FAEDB:保留][{state4}] /{CmdName} sv keep <数量>");
+        mess.AppendLine($"[c/3FAEDB:地图][{state5}] /{CmdName} sv wld");
+        mess.AppendLine($"[c/3FAEDB:数据][{state6}] /{CmdName} sv sql");
+        mess.AppendLine($"[c/3FAEDB:消息][{state7}] /{CmdName} sv msg");
 
-        if (!plr.RealPlayer)
-            plr.SendMessage(info.ToString(), color);
+        if (plr.RealPlayer)
+            plr.SendMessage(TextGradient(mess.ToString()), color);
         else
-            plr.SendMessage(TextGradient(info.ToString()), color);
+            plr.SendMessage(mess.ToString(), color);
     }
     #endregion
 
@@ -305,10 +393,7 @@ internal class Commands
 
         if (args.Parameters.Count < 2)
         {
-            Config.AutoRegister = !Config.AutoRegister;
-            Config.Write();
-            var state = Config.AutoRegister ? "开启" : "关闭";
-            plr.SendMessage($"自动注册已切换为 {state}", color);
+            SetBool("自动注册", plr, () => Config.AutoRegister, (val) => Config.AutoRegister = val);
             plr.SendMessage($"改新玩家默认密码: /{CmdName} reg 新密码", color);
             return;
         }
@@ -335,217 +420,13 @@ internal class Commands
     {
         if (args.Parameters.Count < 2)
         {
-            Config.ProgressLock = !Config.ProgressLock;
-            Config.Write();
-            var state = Config.ProgressLock ? "开启" : "关闭";
-            plr.SendMessage($"人数进度锁已切换为 {state}", color);
+            SetBool("人数进度锁", plr, () => Config.ProgressLock, (val) => Config.ProgressLock = val);
             plr.SendMessage($"改解锁人数: /{CmdName} boss 人数", color);
             return;
         }
 
-        // 人数足够 不阻止
         int PlayerCount = TShock.Utils.GetActivePlayerCount();
-
-        if (!int.TryParse(args.Parameters[1], out int count))
-        {
-            plr.SendMessage($"请输入正确数字 如:/{CmdName} boss 3", color);
-            plr.SendMessage($"当前为{PlayerCount}/{Config.UnLockCount}人", color2);
-            return;
-        }
-
-        var oldCount = Config.UnLockCount;
-        Config.UnLockCount = count;
-        Config.Write();
-        plr.SendMessage($"解锁人数已从 {oldCount} => {count}人", color);
-    }
-    #endregion
-
-    #region 自动备份指令
-    private static void AutoSave(CommandArgs args, TSPlayer plr)
-    {
-        if (args.Parameters.Count < 2)
-        {
-            ShowSaveSet(plr);
-            return;
-        }
-
-        switch (args.Parameters[1].ToLower())
-        {
-            case "on":
-            case "off":
-                SetSaveState(plr, args.Parameters[1].ToLower() == "on");
-                break;
-
-            case "min":
-            case "int":
-            case "interval":
-            case "分钟":
-                SetSaveInt(args, plr);
-                break;
-
-            case "cl":
-            case "clear":
-            case "clean":
-            case "清理":
-                SetClean(plr);
-                break;
-
-            case "keep":
-            case "保留":
-                SetKeepNum(args, plr);
-                break;
-
-            case "wld":
-            case "world":
-            case "地图":
-                SetWorldState(plr);
-                break;
-
-            case "sql":
-            case "sqlite":
-            case "数据库":
-                SetSqliteState(plr);
-                break;
-
-            case "mag":
-            case "msg":
-            case "mess":
-            case "消息":
-                ToggleMsg(plr);
-                break;
-
-            default:
-                ShowSaveSet(plr);
-                break;
-        }
-    }
-    #endregion
-
-    #region 显示备份设置
-    private static void ShowSaveSet(TSPlayer plr)
-    {
-        var state1 = Config.AutoSavePlayer ? "开" : "关";
-        var state2 = $"{Config.AutoSaveInterval}";
-        var state3 = Config.AutoClean ? "开" : "关";
-        var state4 = $"{Config.MaxBackup}";
-        var state5 = Config.AutoSaveWorld ? "开" : "关";
-        var state6 = Config.AutoSaveSqlite ? "开" : "关";
-        var state7 = Config.ShowAutoSaveMsg ? "开" : "关";
-
-        var mess = new StringBuilder();
-        mess.AppendLine($"\n[c/AD89D5:自动备份设置]");
-        mess.AppendLine($"[c/3FAEDB:备份][{state1}] /{CmdName} sv on|off");
-        mess.AppendLine($"[c/3FAEDB:间隔][{state2}] /{CmdName} sv min <分钟>");
-        mess.AppendLine($"[c/3FAEDB:清理][{state3}] /{CmdName} sv clear");
-        mess.AppendLine($"[c/3FAEDB:保留][{state4}] /{CmdName} sv keep <数量>");
-        mess.AppendLine($"[c/3FAEDB:地图][{state5}] /{CmdName} sv wld");
-        mess.AppendLine($"[c/3FAEDB:数据][{state6}] /{CmdName} sv sql");
-        mess.AppendLine($"[c/3FAEDB:消息][{state7}] /{CmdName} sv msg");
-
-        if (plr.RealPlayer)
-            plr.SendMessage(TextGradient(mess.ToString()), color);
-        else
-            plr.SendMessage(mess.ToString(), color);
-    }
-    #endregion
-
-    #region 设置自动备份开关（总开关，保留on/off参数）
-    private static void SetSaveState(TSPlayer plr, bool state)
-    {
-        var oldState = Config.AutoSavePlayer;
-        Config.AutoSavePlayer = state;
-        Config.Write();
-        var action = state ? "开启" : "关闭";
-        plr.SendMessage($"自动备份已{action}", color);
-    }
-    #endregion
-
-    #region 设置自动备份间隔
-    private static void SetSaveInt(CommandArgs args, TSPlayer plr)
-    {
-        if (args.Parameters.Count < 3 || !int.TryParse(args.Parameters[2], out int time))
-        {
-            plr.SendMessage($"用法: /{CmdName} sv min <分钟数>", color);
-            plr.SendMessage($"当前间隔: {Config.AutoSaveInterval}分钟", color2);
-            return;
-        }
-
-        if (time < 1)
-        {
-            plr.SendErrorMessage("备份间隔必须大于0分钟");
-            return;
-        }
-
-        var oldTime = Config.AutoSaveInterval;
-        Config.AutoSaveInterval = time;
-        Config.Write();
-
-        plr.SendMessage($"备份间隔已从 {oldTime} => {time}分钟", color);
-    }
-    #endregion
-
-    #region 设置清理备份开关
-    private static void SetClean(TSPlayer plr)
-    {
-        Config.AutoClean = !Config.AutoClean;
-        Config.Write();
-        var state = Config.AutoClean ? "开启" : "关闭";
-        plr.SendMessage($"自动清理备份已切换为 {state}", color);
-    }
-    #endregion
-
-    #region 设置备份地图开关
-    private static void SetWorldState(TSPlayer plr)
-    {
-        Config.AutoSaveWorld = !Config.AutoSaveWorld;
-        Config.Write();
-        var state = Config.AutoSaveWorld ? "开启" : "关闭";
-        plr.SendMessage($"自动备份地图已切换为 {state}", color);
-    }
-    #endregion
-
-    #region 设置备份数据库开关
-    private static void SetSqliteState(TSPlayer plr)
-    {
-        Config.AutoSaveSqlite = !Config.AutoSaveSqlite;
-        Config.Write();
-        var state = Config.AutoSaveSqlite ? "开启" : "关闭";
-        plr.SendMessage($"自动备份数据库已切换为 {state}", color);
-    }
-    #endregion
-
-    #region 设置备份保留数量
-    private static void SetKeepNum(CommandArgs args, TSPlayer plr)
-    {
-        if (args.Parameters.Count < 3 || !int.TryParse(args.Parameters[2], out int count))
-        {
-            plr.SendMessage($"用法: /{CmdName} save keep <数量>", color);
-            plr.SendMessage($"当前保留: {Config.MaxBackup}个", color2);
-            return;
-        }
-
-        if (count < 1)
-        {
-            plr.SendErrorMessage("保留数量必须大于0");
-            return;
-        }
-
-        var oldCount = Config.MaxBackup;
-        Config.MaxBackup = count;
-        Config.Write();
-
-        plr.SendMessage($"保留备份数量已从 {oldCount} => {count}个", color);
-    }
-    #endregion
-
-    #region 设置备份消息显示开关
-    private static void ToggleMsg(TSPlayer plr)
-    {
-        Config.ShowAutoSaveMsg = !Config.ShowAutoSaveMsg;
-        Config.Write();
-
-        var state = Config.ShowAutoSaveMsg ? "开启" : "关闭";
-        plr.SendMessage($"自动备份消息显示已切换为 {state}", color);
+        SetNum("解锁人数", plr, (val) => Config.UnLockCount = val, args.Parameters[1], "人");
     }
     #endregion
 
@@ -554,25 +435,12 @@ internal class Commands
     {
         if (args.Parameters.Count < 2)
         {
-            Config.NoUseRgionCheat = !Config.NoUseRgionCheat;
-            Config.Write();
-            var state = Config.NoUseRgionCheat ? "开启" : "关闭";
-            plr.SendMessage($"禁用区域箱子材料已切换为 {state}", color);
+            SetBool("禁用区域箱子材料", plr, () => Config.NoUseRgionCheat, (val) => Config.NoUseRgionCheat = val);
             plr.SendMessage($"改禁用范围: /{CmdName} chest 格数", color);
             return;
         }
 
-        if (!float.TryParse(args.Parameters[1], out float range))
-        {
-            plr.SendMessage($"请输入正确数字 如:/{CmdName} chest 40", color);
-            plr.SendMessage($"当前为范围:{Config.NoUseCheatRange}格", color2);
-            return;
-        }
-
-        var oldRange = Config.NoUseCheatRange;
-        Config.NoUseCheatRange = range;
-        Config.Write();
-        plr.SendMessage($"禁用范围已从 {oldRange} => {Config.NoUseCheatRange}格", color);
+        SetFloat("禁用范围", plr, (val) => Config.NoUseCheatRange = val, args.Parameters[1], "格");
     }
     #endregion
 
@@ -581,10 +449,7 @@ internal class Commands
     {
         if (args.Parameters.Count < 2)
         {
-            Config.TpBagEnabled = !Config.TpBagEnabled;
-            Config.Write();
-            var state = Config.TpBagEnabled ? "开启" : "关闭";
-            TSPlayer.All.SendMessage($"宝藏袋传送已切换为 {state}", color);
+            SetBool("宝藏袋传送", plr, () => Config.TpBagEnabled, (val) => Config.TpBagEnabled = val);
             plr.SendMessage($"修改关键词: /{CmdName} bag 关键词", color);
             plr.SendMessage($"存在则移除，不再则添加", color2);
             return;
@@ -609,30 +474,6 @@ internal class Commands
     }
     #endregion
 
-    #region 进服公告开关
-    private static void SwitchMotd(TSPlayer plr)
-    {
-        Config.MotdEnabled = !Config.MotdEnabled;
-        Config.Write();
-
-        if (Config.MotdEnabled)
-            TSPlayer.All.SendMessage($"{TextGradient(string.Join("\n", Config.MotdMess))}", color);
-
-        var state = Config.MotdEnabled ? "开启" : "关闭";
-        plr.SendMessage($"进服公告已切换为 {state}", color);
-    }
-    #endregion
-
-    #region 设置修复天塔柱刷物品BUG开关
-    private static void SetFixPlaceObject(TSPlayer plr)
-    {
-        Config.FixPlaceObject = !Config.FixPlaceObject;
-        Config.Write();
-        var state = Config.FixPlaceObject ? "开启" : "关闭";
-        plr.SendMessage($"修复天塔柱刷物品BUG已切换为 {state}", color);
-    }
-    #endregion
-
     #region 设置导出角色版本号
     private static void SetGameVersion(CommandArgs args, TSPlayer plr)
     {
@@ -643,26 +484,7 @@ internal class Commands
             return;
         }
 
-        if (int.TryParse(args.Parameters[1], out int num))
-        {
-            Config.GameVersion = num;
-            Config.Write();
-            plr.SendMessage($"导出存档版本号已设置为 {Config.GameVersion}", color);
-        }
-        else
-        {
-            plr.SendMessage($"请输入正确数字 如:/pout vs 315", color);
-        }
-    }
-    #endregion
-
-    #region 跨版本进服切换方法
-    private static void NoVisualLimit(CommandArgs args, TSPlayer plr)
-    {
-        Config.NoVisualLimit = !Config.NoVisualLimit;
-        Config.Write();
-        var state = Config.NoVisualLimit ? "开启" : "关闭";
-        plr.SendMessage($"跨版本进服已切换为 {state}", color);
+        SetNum("导出存档版本号", plr, (val) => Config.GameVersion = val, args.Parameters[1]);
     }
     #endregion
 
@@ -1146,48 +968,6 @@ internal class Commands
     }
     #endregion
 
-    #region 随机复制新地图方法
-    public static readonly string MapDir = Path.Combine(MainPath, "重置时用的复制地图"); // 复制地图路径
-    public static readonly string WldDir = Path.Combine(typeof(TShock).Assembly.Location, "world"); // 加载地图路径
-    private static void RandomCopyMap(TSPlayer plr)
-    {
-        try
-        {
-            // 获取所有wld文件
-            string[] mapFiles = Directory.GetFiles(MapDir, "*.wld");
-
-            if (mapFiles.Length == 0)
-            {
-                TShock.Log.ConsoleWarn($"[{PluginName}] 地图文件夹中没有.wld文件，跳过复制");
-                return;
-            }
-
-            // 随机选择一个地图
-            string source = mapFiles[rand.Next(mapFiles.Length)];
-            string destFile = Path.Combine(WldDir, "SFE4.wld");
-
-            // 复制地图
-            File.Copy(source, destFile, true);
-            TShock.Log.ConsoleInfo($"[{PluginName}] 已随机复制地图: {Path.GetFileName(source)} => SFE4.wld");
-        }
-        catch (Exception ex)
-        {
-            TShock.Log.ConsoleError($"[{PluginName}] 自动复制地图失败: {ex}");
-        }
-    }
-    #endregion
-
-    #region 修复物品召唤入侵事件
-    private static void SwitchFixStartInvasion(TSPlayer plr)
-    {
-        Config.FixStartInvasion = !Config.FixStartInvasion;
-        Config.Write();
-
-        var state = Config.FixStartInvasion ? "开启" : "关闭";
-        plr.SendMessage($"修复物品召唤入侵事件已切换为 {state}", color);
-    }
-    #endregion
-
     #region 修复地图区块缺失（自动修改server.properties文件）
     private static void FixWorld(CommandArgs args, TSPlayer plr)
     {
@@ -1200,10 +980,7 @@ internal class Commands
 
         if (args.Parameters[1].Equals("auto", StringComparison.OrdinalIgnoreCase))
         {
-            Config.AutoFixWorld = !Config.AutoFixWorld;
-            Config.Write();
-            var state = Config.AutoFixWorld ? "开启" : "关闭";
-            plr.SendMessage($"自动修复地图区块缺失已切换为 {state}", color);
+            SetBool("自动修复地图区块缺失", plr, () => Config.AutoFixWorld, (val) => Config.AutoFixWorld = val);
             return;
         }
 
@@ -1213,7 +990,7 @@ internal class Commands
     #endregion
 
     #region 执行修复地图区块缺失操作
-    public static readonly string StartConfigPath = Path.Combine(typeof(TShock).Assembly.Location, "server.properties"); // 启动参数路径
+    public static readonly string PropPath = Path.Combine(typeof(TShock).Assembly.Location, "server.properties");
     public static void ExecuteFix(TSPlayer plr, bool isCmd = true)
     {
         try
@@ -1225,95 +1002,29 @@ internal class Commands
                 return;
             }
 
-            var Paths = StartConfigPath;
-
-            if (!File.Exists(Paths))
+            if (!File.Exists(PropPath))
             {
-                plr.SendMessage($"找不到 server.properties 文件: {Paths}", color);
+                plr.SendMessage($"找不到 server.properties 文件: {PropPath}", color);
                 return;
             }
 
-            string[] lines = File.ReadAllLines(Paths);
-            bool found = false;
-            bool flag = false;
-
-            for (int i = 0; i < lines.Length; i++)
-            {
-                string line = lines[i].Trim();
-
-                // 跳过注释行和空行
-                if (line.StartsWith("#") || string.IsNullOrEmpty(line))
-                    continue;
-
-                // 找到autocreate配置行
-                if (line.StartsWith("autocreate", StringComparison.OrdinalIgnoreCase))
-                {
-                    int equalsIndex = line.IndexOf('=');
-                    if (equalsIndex > 0)
-                    {
-                        string key = line.Substring(0, equalsIndex).Trim();
-                        if (key.Equals("autocreate", StringComparison.OrdinalIgnoreCase))
-                        {
-                            string cur = line.Substring(equalsIndex + 1).Trim();
-
-                            // 检查是否已经是目标值
-                            if (cur == size.ToString())
-                            {
-                                flag = true;
-                                plr.SendMessage($"此BUG已修复,当前autocreate为:{cur}", color);
-                                return;
-                            }
-
-                            // 修改值
-                            lines[i] = $"{key}={size}";
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-            }
+            string[] lines;
+            bool found, flag;
+            ModifyProperties(plr, size, out lines, out found, out flag);
 
             if (isCmd)
             {
                 if (found)
                 {
                     // 如果找到并修改，保存文件
-                    SetAutoCreate(size, Paths, lines);
-
-                    TShock.Utils.Broadcast($"[{PluginName}] 服务器即将[c/DC143C:开始修复地图区块缺失bug]...", color);
-                    for (var i = 10; i >= 0; i--)
-                    {
-                        TShock.Utils.Broadcast(string.Format($"[{PluginName}] {i}秒后关闭服务器..."), color2);
-                        Thread.Sleep(1000);
-                    }
-
-                    // 踢出玩家确保SSC角色保存
-                    TShock.Players.ForEach(delegate (TSPlayer? p)
-                    {
-                        p?.Kick($"{PluginName} 正在修复地图区块缺失bug,请10秒后重进", true, true);
-                    });
-
-                    TShockAPI.Commands.HandleCommand(TSPlayer.Server, "/off");
+                    SetAutoCreate(size, lines);
+                    Notify_offServer(); // 通知并关闭服务器
                 }
                 else if (!flag)
                 {
                     // 如果没有找到，在文件末尾添加
-                    AddAutoCreate(size, Paths, lines);
-
-                    TShock.Utils.Broadcast($"[{PluginName}] 服务器即将[c/DC143C:开始修复地图区块缺失bug]...", color);
-                    for (var i = 10; i >= 0; i--)
-                    {
-                        TShock.Utils.Broadcast(string.Format($"[{PluginName}] {i}秒后关闭服务器..."), color2);
-                        Thread.Sleep(1000);
-                    }
-
-                    // 踢出玩家确保SSC角色保存
-                    TShock.Players.ForEach(delegate (TSPlayer? p)
-                    {
-                        p?.Kick($"{PluginName} 正在修复地图区块缺失bug,请10秒后重进", true, true);
-                    });
-
-                    TShockAPI.Commands.HandleCommand(TSPlayer.Server, "/off");
+                    AddAutoCreate(size, lines);
+                    Notify_offServer(); // 通知并关闭服务器
                 }
             }
             else
@@ -1321,25 +1032,14 @@ internal class Commands
                 if (found)
                 {
                     // 如果找到并修改，保存文件
-                    SetAutoCreate(size, Paths, lines);
-
-                    try
-                    {
-                        TShock.RestApi.Dispose(); //关闭RestApi
-                    }
-                    catch { }
-
-                    Netplay.SaveOnServerExit = false; //不保存地图
-                    Netplay.Disconnect = true; //断开连接
-                    TShock.ShuttingDown = true; //关闭服务器
-                    Environment.Exit(0); //退出程序
+                    SetAutoCreate(size, lines);
+                    offServer(); // 直接关服
                 }
                 else if (!flag)
                 {
                     // 如果没有找到，在文件末尾添加
-                    AddAutoCreate(size, Paths, lines);
-
-                    offServer();
+                    AddAutoCreate(size, lines);
+                    offServer(); // 直接关服
                 }
             }
         }
@@ -1349,6 +1049,70 @@ internal class Commands
             plr.SendMessage($"修复失败: {ex.Message}", color);
         }
     }
+
+    #region 修改Properties文件
+    private static void ModifyProperties(TSPlayer plr, int size, out string[] lines, out bool found, out bool flag)
+    {
+        lines = File.ReadAllLines(PropPath);
+        found = false;
+        flag = false;
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string line = lines[i].Trim();
+
+            // 跳过注释行和空行
+            if (line.StartsWith("#") || string.IsNullOrEmpty(line))
+                continue;
+
+            // 找到autocreate配置行
+            if (line.StartsWith("autocreate", StringComparison.OrdinalIgnoreCase))
+            {
+                int equalsIndex = line.IndexOf('=');
+                if (equalsIndex > 0)
+                {
+                    string key = line.Substring(0, equalsIndex).Trim();
+                    if (key.Equals("autocreate", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string cur = line.Substring(equalsIndex + 1).Trim();
+
+                        // 检查是否已经是目标值
+                        if (cur == size.ToString())
+                        {
+                            flag = true;
+                            plr.SendMessage($"此BUG已修复,当前autocreate为:{cur}", color);
+                            return;
+                        }
+
+                        // 修改值
+                        lines[i] = $"{key}={size}";
+                        found = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    #endregion
+
+    #region 带倒计时通知并关服
+    private static void Notify_offServer()
+    {
+        TShock.Utils.Broadcast($"[{PluginName}] 服务器即将[c/DC143C:开始修复地图区块缺失bug]...", color);
+        for (var i = 10; i >= 0; i--)
+        {
+            TShock.Utils.Broadcast(string.Format($"[{PluginName}] {i}秒后关闭服务器..."), color2);
+            Thread.Sleep(1000);
+        }
+
+        // 踢出玩家确保SSC角色保存
+        TShock.Players.ForEach(delegate (TSPlayer? p)
+        {
+            p?.Kick($"{PluginName} 正在修复地图区块缺失bug,请10秒后重进", true, true);
+        });
+
+        TShockAPI.Commands.HandleCommand(TSPlayer.Server, "/off");
+    }
+    #endregion
 
     #region 关闭服务器方法
     private static void offServer()
@@ -1367,23 +1131,46 @@ internal class Commands
     #endregion
 
     #region 修改autocreate值
-    private static void SetAutoCreate(int size, string Paths, string[] lines)
+    private static void SetAutoCreate(int size, string[] lines)
     {
-        File.WriteAllLines(Paths, lines);
+        File.WriteAllLines(PropPath, lines);
         TShock.Log.ConsoleInfo($"已根据地图尺寸修改 server.properties 中的 autocreate 值为{size}");
     }
     #endregion
 
     #region 添加autocreate并设置值
-    private static void AddAutoCreate(int size, string Paths, string[] lines)
+    private static void AddAutoCreate(int size, string[] lines)
     {
         var newLines = lines.ToList();
         newLines.Add($"autocreate={size}");
-        File.WriteAllLines(Paths, newLines);
+        File.WriteAllLines(PropPath, newLines);
         TShock.Log.ConsoleInfo($"已在 server.properties 中 添加 autocreate={size}");
     }
     #endregion
 
+    #endregion
+
+    #region 显示世界区块缺失的修复信息
+    public static void ShowFixInfo(TSPlayer plr)
+    {
+        var info = new StringBuilder();
+        info.AppendLine("修复地图区块缺失流程：");
+        info.AppendLine("1.检测当前地图尺寸（小/中/大）");
+        info.AppendLine("2.修改 server.properties 中的 autocreate 值");
+        info.AppendLine("4.进入10秒倒计时");
+        info.AppendLine("4.踢出在线玩家确保数据保存,关闭服务器");
+        info.AppendLine("5.根据启动项,重启服务器后生效");
+
+        info.AppendLine($"\n自动修复开关: /{CmdName} fix auto");
+        info.AppendLine("注:自动修复会在刚开服后执行工作并立即重启");
+        info.AppendLine($"\n确认修复请输入: /{CmdName} fix yes");
+        info.AppendLine("注:此操作会重启服务器，请确保已通知在线玩家!");
+
+        if (!plr.RealPlayer)
+            plr.SendMessage(info.ToString(), color);
+        else
+            plr.SendMessage(TextGradient(info.ToString()), color);
+    }
     #endregion
 
     #region 重置服务器方法
@@ -1423,23 +1210,64 @@ internal class Commands
     }
     #endregion
 
-    #region 显示玩家存档命令的帮助信息
-    private static void ShowPlayerHelp(TSPlayer plr)
+    #region 随机复制新地图方法
+    public static readonly string MapDir = Path.Combine(MainPath, "重置时用的复制地图"); // 复制地图路径
+    public static readonly string WldDir = Path.Combine(typeof(TShock).Assembly.Location, "world"); // 加载地图路径
+    private static void RandomCopyMap(TSPlayer plr)
     {
-        var mess = new StringBuilder();
+        try
+        {
+            // 获取所有wld文件
+            string[] mapFiles = Directory.GetFiles(MapDir, "*.wld");
 
-        mess.AppendLine("\n[c/AD89D5:玩家存档管理指令]");
-        mess.AppendLine($"[c/3FAEDB:导出] /{CmdName} p c");
-        mess.AppendLine($"[c/3FAEDB:导入] /{CmdName} p r");
+            if (mapFiles.Length == 0)
+            {
+                TShock.Log.ConsoleWarn($"[{PluginName}] 地图文件夹中没有.wld文件，跳过复制");
+                return;
+            }
 
-        // 获取版本显示字符串
-        string vsText = GetVSText(Config.GameVersion);
-        mess.AppendLine($"版本:[c/888888:{vsText}]");
+            // 随机选择一个地图
+            string source = mapFiles[rand.Next(mapFiles.Length)];
+            string destFile = Path.Combine(WldDir, "SFE4.wld");
 
-        if (plr.RealPlayer)
-            plr.SendMessage(TextGradient(mess.ToString()), color);
+            // 复制地图
+            File.Copy(source, destFile, true);
+            TShock.Log.ConsoleInfo($"[{PluginName}] 已随机复制地图: {Path.GetFileName(source)} => SFE4.wld");
+        }
+        catch (Exception ex)
+        {
+            TShock.Log.ConsoleError($"[{PluginName}] 自动复制地图失败: {ex}");
+        }
+    }
+    #endregion
+
+    #region 显示重置信息
+    private static void ShowResetInfo(TSPlayer plr)
+    {
+        var info = new StringBuilder();
+        info.AppendLine("重置服务器流程：");
+        info.AppendLine("1.自动导出所有SSC玩家存档并打包地图");
+        info.AppendLine("2.重置前执行:其他插件的清理数据指令");
+        info.AppendLine("3.清理tshock.sqlite数据库");
+        info.AppendLine(" tsCharacter - 强制开荒背包");
+        info.AppendLine(" Warps - 地标传送点");
+        info.AppendLine(" Regions - 区域领地坐标");
+        info.AppendLine(" Research - 旅途研究");
+        info.AppendLine(" RememberedPos - 回服传送记录点");
+        info.AppendLine("4.清理已解锁怪物表中的怪物名称");
+        info.AppendLine("5.删除指定文件(当前地图备份、日志文件)");
+        info.AppendLine($"6.检测【{Path.GetFileName(MapDir)}】是否有地图文件:");
+        info.AppendLine("有: 随机选择地图并改名SFE4.wld复制world文件夹");
+        info.AppendLine("没有: 根据server.properties内的参数创建新地图");
+        info.AppendLine("7.重置后执行关服不保存,根据启动项自动重启");
+
+        info.AppendLine($"\n确认重置请输入: /{CmdName} reset yes");
+        info.AppendLine("警告: 此操作不可逆，请确保已备份重要数据!");
+
+        if (!plr.RealPlayer)
+            plr.SendMessage(info.ToString(), color);
         else
-            plr.SendMessage(mess.ToString(), color);
+            plr.SendMessage(TextGradient(info.ToString()), color);
     }
     #endregion
 
@@ -1537,6 +1365,26 @@ internal class Commands
                 plr.SendMessage($"/{CmdName} p r 存档索引 玩家名", color);
                 break;
         }
+    }
+    #endregion
+
+    #region 显示玩家存档命令的帮助信息
+    private static void ShowPlayerHelp(TSPlayer plr)
+    {
+        var mess = new StringBuilder();
+
+        mess.AppendLine("\n[c/AD89D5:玩家存档管理指令]");
+        mess.AppendLine($"[c/3FAEDB:导出] /{CmdName} p c");
+        mess.AppendLine($"[c/3FAEDB:导入] /{CmdName} p r");
+
+        // 获取版本显示字符串
+        string vsText = GetVSText(Config.GameVersion);
+        mess.AppendLine($"版本:[c/888888:{vsText}]");
+
+        if (plr.RealPlayer)
+            plr.SendMessage(TextGradient(mess.ToString()), color);
+        else
+            plr.SendMessage(mess.ToString(), color);
     }
     #endregion
 

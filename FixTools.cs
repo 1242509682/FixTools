@@ -34,25 +34,6 @@ public partial class FixTools : TerrariaPlugin
     public FixTools(Main game) : base(game) { }
     public override void Initialize()
     {
-        // 创建配置文件夹
-        if (!Directory.Exists(MainPath))
-            Directory.CreateDirectory(MainPath);
-        // 创建复制源文件文件夹
-        if (!Directory.Exists(Commands.CopyDir))
-            Directory.CreateDirectory(Commands.CopyDir);
-        // 创建复制地图文件夹
-        if (!Directory.Exists(Commands.MapDir))
-            Directory.CreateDirectory(Commands.MapDir);
-        // 创建导出存档文件夹
-        if (!Directory.Exists(WritePlayer.WritePlrDir))
-            Directory.CreateDirectory(WritePlayer.WritePlrDir);
-        // 创建导入存档文件夹
-        if (!Directory.Exists(ReaderPlayer.ReaderPlrDir))
-            Directory.CreateDirectory(ReaderPlayer.ReaderPlrDir);
-        // 创建自动备份文件夹
-        if (!Directory.Exists(WritePlayer.AutoSaveDir))
-            Directory.CreateDirectory(WritePlayer.AutoSaveDir);
-
         LoadConfig(); // 加载配置文件
         GeneralHooks.ReloadEvent += ReloadConfig;
         ServerApi.Hooks.GamePostInitialize.Register(this, this.GamePost, 9999);
@@ -68,7 +49,7 @@ public partial class FixTools : TerrariaPlugin
         ServerApi.Hooks.DropBossBag.Register(this, OnDropBossBag);
         ServerApi.Hooks.ServerChat.Register(this, this.OnChat);
         CraftingRequests.CanCraftFromChest += OnCanCraftFromChest;
-        TShockAPI.Commands.ChatCommands.Add(new Command($"{CmdName}.use", Commands.pout, CmdName));
+        TShockAPI.Commands.ChatCommands.Add(new Command($"{CmdName}.use", Commands.pout, CmdName,"pt"));
     }
 
     protected override void Dispose(bool disposing)
@@ -104,6 +85,25 @@ public partial class FixTools : TerrariaPlugin
     }
     private static void LoadConfig()
     {
+        // 创建配置文件夹
+        if (!Directory.Exists(MainPath))
+            Directory.CreateDirectory(MainPath);
+        // 创建复制源文件文件夹
+        if (!Directory.Exists(Commands.CopyDir))
+            Directory.CreateDirectory(Commands.CopyDir);
+        // 创建复制地图文件夹
+        if (!Directory.Exists(Commands.MapDir))
+            Directory.CreateDirectory(Commands.MapDir);
+        // 创建导出存档文件夹
+        if (!Directory.Exists(WritePlayer.WritePlrDir))
+            Directory.CreateDirectory(WritePlayer.WritePlrDir);
+        // 创建导入存档文件夹
+        if (!Directory.Exists(ReaderPlayer.ReaderPlrDir))
+            Directory.CreateDirectory(ReaderPlayer.ReaderPlrDir);
+        // 创建自动备份文件夹
+        if (!Directory.Exists(WritePlayer.AutoSaveDir))
+            Directory.CreateDirectory(WritePlayer.AutoSaveDir);
+
         Config = Configuration.Read();
         Config.Write();
     }
