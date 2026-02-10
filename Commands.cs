@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.IO.Compression;
+using System.Text;
 using Terraria;
 using Terraria.ID;
 using TerrariaApi.Server;
@@ -151,6 +152,10 @@ internal class Commands
 
                             case "r": // 导入命令
                                 ImportPlayer(args, plr);
+                                break;
+
+                            case "z": // 备份还原操作
+                                ZipPlayer(args, plr);
                                 break;
 
                             default:
@@ -1368,6 +1373,199 @@ internal class Commands
     }
     #endregion
 
+    #region 备份压缩包操作
+    private static void ZipPlayer(CommandArgs args, TSPlayer plr)
+    {
+        try
+        {
+            // 获取自动备份文件夹中的所有zip文件
+            var zipFiles = Directory.GetFiles(WritePlayer.AutoSaveDir, "*.zip")
+                .OrderByDescending(File.GetCreationTime).ToArray();
+
+            if (zipFiles.Length == 0)
+            {
+                plr.SendMessage("自动备份文件夹中没有备份文件", color);
+                return;
+            }
+
+            // 清空导入存档文件夹
+            if (Directory.Exists(ReaderPlayer.ReaderPlrDir))
+            {
+                foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderPlrDir))
+                {
+                    File.Delete(file);
+                }
+            }
+
+            // 情况1: /pout p z - 列出备份文件
+            if (args.Parameters.Count == 2)
+            {
+                ListZips(plr, zipFiles);
+                return;
+            }
+
+            // 情况2: /pout p z 玩家名 - 使用最新备份恢复指定玩家
+            if (args.Parameters.Count == 3)
+            {
+                string param = args.Parameters[2];
+
+                // 检查是否是数字（索引）
+                if (int.TryParse(param, out int idx))
+                {
+                    plr.SendMessage($"用法: /{CmdName} p z {idx} all", color);
+                    plr.SendMessage($"用法: /{CmdName} p z {idx} 玩家名", color);
+                    return;
+                }
+
+                // 作为玩家名处理
+                var name = param;
+                var latestZip = zipFiles.First();
+                ExtractAndImport(plr, latestZip, name);
+                return;
+            }
+
+            // 情况3: /pout p z 索引 all - 恢复所有玩家
+            // 情况4: /pout p z 索引 玩家名 - 恢复指定玩家
+            if (args.Parameters.Count >= 4)
+            {
+                if (!int.TryParse(args.Parameters[2], out int idx) || idx < 1)
+                {
+                    plr.SendMessage("索引必须是大于0的数字", color);
+                    return;
+                }
+
+                if (idx > zipFiles.Length)
+                {
+                    plr.SendMessage($"索引 {idx} 无效，最大为 {zipFiles.Length}", color);
+                    ListZips(plr, zipFiles);
+                    return;
+                }
+
+                var zipFile = zipFiles[idx - 1];
+                var operation = args.Parameters[3].ToLower();
+
+                if (operation == "all")
+                {
+                    ExtractAndImportAll(plr, zipFile);
+                }
+                else
+                {
+                    var name = operation;
+                    ExtractAndImport(plr, zipFile, name);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            plr.SendErrorMessage($"备份操作失败: {ex.Message}");
+            TShock.Log.ConsoleError($"[{PluginName}] ZipPlayer错误: {ex}");
+        }
+    }
+    #endregion
+
+    #region 列出备份文件
+    private static void ListZips(TSPlayer plr, string[] zipFiles)
+    {
+        var mess = new StringBuilder();
+        mess.AppendLine("自动备份文件列表:");
+
+        for (int i = 0; i < zipFiles.Length; i++)
+        {
+            var file = zipFiles[i];
+            var name = Path.GetFileNameWithoutExtension(file);
+            var time = File.GetCreationTime(file);
+            var size = new FileInfo(file).Length;
+            var sizeText = size < 1024 * 1024 ?
+                $"{(size / 1024.0):F1}KB" :
+                $"{(size / (1024.0 * 1024.0)):F1}MB";
+
+            mess.AppendLine($"{i + 1}. {name} ({time:MM-dd HH:mm}, {sizeText})");
+        }
+
+        mess.AppendLine($"\n使用最新备份恢复玩家: /{CmdName} p z 玩家名");
+        mess.AppendLine($"恢复所有玩家: /{CmdName} p z 索引 all");
+        mess.AppendLine($"恢复指定玩家: /{CmdName} p z 索引 玩家名");
+        mess.AppendLine($"注意:索引为压缩包的序号,最新的是1,");
+        mess.AppendLine($"每次执行前后都会清空《导入存档》文件夹");
+
+        if (plr.RealPlayer)
+            plr.SendMessage(TextGradient(mess.ToString()), color);
+        else
+            plr.SendMessage(mess.ToString(), color);
+    }
+    #endregion
+
+    #region 解压并导入指定玩家
+    private static void ExtractAndImport(TSPlayer plr, string zipPath, string name)
+    {
+        plr.SendMessage($"正在解压: {Path.GetFileName(zipPath)}", color);
+
+        using (var zip = ZipFile.OpenRead(zipPath))
+        {
+            // 查找匹配的.plr文件
+            var plrEntry = zip.Entries.FirstOrDefault(e =>
+                e.Name.Equals($"{name}.plr", StringComparison.OrdinalIgnoreCase));
+
+            if (plrEntry == null)
+            {
+                plr.SendMessage($"未找到玩家 {name} 的备份文件", color);
+                return;
+            }
+
+            // 解压到导入文件夹
+            var destPath = Path.Combine(ReaderPlayer.ReaderPlrDir, plrEntry.Name);
+            plrEntry.ExtractToFile(destPath, true);
+
+            plr.SendMessage($"已提取: {plrEntry.Name}", color2);
+        }
+
+        // 导入存档
+        ReaderPlayer.ReadPlayer(plr, $"{ReaderPlayer.ReaderPlrDir}/{name}.plr");
+
+        // 清空导入文件夹
+        foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderPlrDir))
+        {
+            File.Delete(file);
+        }
+
+        plr.SendMessage($"已清空导入存档文件夹", color2);
+    }
+    #endregion
+
+    #region 解压并导入所有玩家
+    private static void ExtractAndImportAll(TSPlayer plr, string zipPath)
+    {
+        plr.SendMessage($"正在解压: {Path.GetFileName(zipPath)}", color);
+
+        int count = 0;
+        using (var zip = ZipFile.OpenRead(zipPath))
+        {
+            foreach (var entry in zip.Entries)
+            {
+                if (entry.Name.EndsWith(".plr", StringComparison.OrdinalIgnoreCase))
+                {
+                    var destPath = Path.Combine(ReaderPlayer.ReaderPlrDir, entry.Name);
+                    entry.ExtractToFile(destPath, true);
+                    count++;
+                }
+            }
+        }
+
+        plr.SendMessage($"已提取 {count} 个存档文件", color2);
+
+        // 导入所有存档
+        ReaderPlayer.ReadPlayer(plr);
+
+        // 清空导入文件夹
+        foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderPlrDir))
+        {
+            File.Delete(file);
+        }
+
+        plr.SendMessage($"已清空导入存档文件夹", color2);
+    }
+    #endregion
+
     #region 显示玩家存档命令的帮助信息
     private static void ShowPlayerHelp(TSPlayer plr)
     {
@@ -1376,6 +1574,7 @@ internal class Commands
         mess.AppendLine("\n[c/AD89D5:玩家存档管理指令]");
         mess.AppendLine($"[c/3FAEDB:导出] /{CmdName} p c");
         mess.AppendLine($"[c/3FAEDB:导入] /{CmdName} p r");
+        mess.AppendLine($"[c/3FAEDB:从备份导入] /{CmdName} p z");
 
         // 获取版本显示字符串
         string vsText = GetVSText(Config.GameVersion);
