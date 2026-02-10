@@ -18,13 +18,14 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 2, 10);
+    public override Version Version => new(2026, 2, 11);
     public override string Description => "本插件仅TShock测试版期间维护,指令/pout";
     #endregion
 
     #region 静态变量
     public static string PluginName => "145修复小公举"; // 插件名称
-    public static string CmdName => "pout"; // 指令名称
+    public static string pt => "pout"; // 主指令名称
+    public static string bak => "bak"; // 投票指令名
     public static string TShockVS => "c5a1747"; // 适配版本号
     public static readonly string MainPath = Path.Combine(TShock.SavePath, PluginName); // 主文件夹路径
     public static readonly string ConfigPath = Path.Combine(MainPath, "配置文件.json"); // 配置文件路径
@@ -49,7 +50,9 @@ public partial class FixTools : TerrariaPlugin
         ServerApi.Hooks.DropBossBag.Register(this, OnDropBossBag);
         ServerApi.Hooks.ServerChat.Register(this, this.OnChat);
         CraftingRequests.CanCraftFromChest += OnCanCraftFromChest;
-        TShockAPI.Commands.ChatCommands.Add(new Command($"{CmdName}.use", Commands.pout, CmdName,"pt"));
+
+        TShockAPI.Commands.ChatCommands.Add(new Command($"{pt}.use", PoutCmd.Pouts, pt, "pt"));
+        TShockAPI.Commands.ChatCommands.Add(new Command(string.Empty, BakCmd.bakCmd, bak));
     }
 
     protected override void Dispose(bool disposing)
@@ -70,7 +73,10 @@ public partial class FixTools : TerrariaPlugin
             ServerApi.Hooks.DropBossBag.Deregister(this, OnDropBossBag);
             ServerApi.Hooks.ServerChat.Deregister(this, this.OnChat);
             CraftingRequests.CanCraftFromChest -= OnCanCraftFromChest;
-            TShockAPI.Commands.ChatCommands.RemoveAll(x => x.CommandDelegate == Commands.pout);
+
+            TShockAPI.Commands.ChatCommands.RemoveAll(x =>
+            x.CommandDelegate == PoutCmd.Pouts ||
+            x.CommandDelegate == BakCmd.bakCmd);
         }
         base.Dispose(disposing);
     }
@@ -89,11 +95,11 @@ public partial class FixTools : TerrariaPlugin
         if (!Directory.Exists(MainPath))
             Directory.CreateDirectory(MainPath);
         // 创建复制源文件文件夹
-        if (!Directory.Exists(Commands.CopyDir))
-            Directory.CreateDirectory(Commands.CopyDir);
+        if (!Directory.Exists(PoutCmd.CopyDir))
+            Directory.CreateDirectory(PoutCmd.CopyDir);
         // 创建复制地图文件夹
-        if (!Directory.Exists(Commands.MapDir))
-            Directory.CreateDirectory(Commands.MapDir);
+        if (!Directory.Exists(PoutCmd.MapDir))
+            Directory.CreateDirectory(PoutCmd.MapDir);
         // 创建导出存档文件夹
         if (!Directory.Exists(WritePlayer.WritePlrDir))
             Directory.CreateDirectory(WritePlayer.WritePlrDir);
@@ -120,22 +126,20 @@ public partial class FixTools : TerrariaPlugin
         TShock.Log.ConsoleInfo($"2.进服公告、跨版本进服、自动修复地图区块缺失");
         TShock.Log.ConsoleInfo($"3.批量改权限、导出权限表、批量删文件、复制文件");
         TShock.Log.ConsoleInfo($"4.自动注册、自动建GM组、自动配权、进度锁、重置服务器");
-        TShock.Log.ConsoleInfo($"指令/{CmdName} 权限:{CmdName}.use");
+        TShock.Log.ConsoleInfo($"指令/{pt} 权限:{pt}.use");
         TShock.Log.ConsoleInfo($"配置文件路径:{ConfigPath}");
         Console.WriteLine(string.Empty);
 
         if (Config.PostCMD.Any())
         {
             Console.WriteLine($"[开服执行指令]");
-            Commands.DoCommand(TSPlayer.Server, Config.PostCMD);
+            PoutCmd.DoCommand(TSPlayer.Server, Config.PostCMD);
             Console.WriteLine(string.Empty);
         }
 
         if (Config.AutoFixWorld)
         {
-            Console.WriteLine($"[自动修复地图区块缺失]");
-            Commands.ExecuteFix(TSPlayer.Server, false);
-            Console.WriteLine(string.Empty);
+            PoutCmd.ExecuteFix(TSPlayer.Server, false);
         }
 
         if (Config.AutoAddGM && !TShock.Groups.GroupExists("GM"))
@@ -144,14 +148,6 @@ public partial class FixTools : TerrariaPlugin
             TShock.Groups.AddGroup("GM", string.Empty, "*,!tshock.ignore.ssc", "193,223,186");
             TShock.Log.ConsoleInfo($"已创建GM权限组，请使用角色进入游戏后:");
             TShock.Log.ConsoleInfo($"在本控制台指定管理:/user group 玩家名 GM");
-            Console.WriteLine(string.Empty);
-        }
-
-        if (Config.AutoPerm)
-        {
-            Console.WriteLine($"[自动配权提醒]");
-            Commands.ManagePerm(TSPlayer.Server, true);
-            TShock.Log.ConsoleInfo($"如果不需要可批量移除:/pout del");
             Console.WriteLine(string.Empty);
         }
 
@@ -230,6 +226,13 @@ public partial class FixTools : TerrariaPlugin
         {
             data.Motd = 0;
             data.Register = false;
+
+            // 如果离开的玩家是申请人，取消申请
+            if (BakCmd.curName == plr.Name)
+            {
+                TSPlayer.All.SendMessage(TextGradient($"[{PluginName}] {plr.Name} 离开,申请已取消"), color);
+                BakCmd.ClearApply();
+            }
         }
     }
     #endregion
@@ -290,6 +293,8 @@ public partial class FixTools : TerrariaPlugin
 
     #region 游戏更新事件，自动备份存档
     private static long frame = 0;  // 自动备份计时器
+    private static long checkFrame = 0; // 申请检查计时器
+    public static bool hasApply = false; // 是否有申请存在
     private void OnGameUpdate(EventArgs args)
     {
         // 自动备份逻辑
@@ -301,6 +306,34 @@ public partial class FixTools : TerrariaPlugin
                 WritePlayer.ExportAll(TSPlayer.Server, WritePlayer.AutoSaveDir);
                 frame = 0;
             }
+        }
+
+        // 有投票时每秒检查1次过期时间,没有投票则返回
+        if (Config.ApplyVote && hasApply && ++checkFrame >= 60)
+        {
+            // 检查当前申请
+            if (BakCmd.curVote != null && BakCmd.curName != null)
+            {
+                // 检查申请是否超时
+                var remain = DateTime.Now - BakCmd.curVote.ApplyTime;
+                if (remain.TotalSeconds > Config.ApplyTime)
+                {
+                    // 发送超时消息
+                    TSPlayer.All.SendMessage(TextGradient($"[{PluginName}] {BakCmd.curName}的回档申请[c/FF5E57:已超时]自动关闭"), color);
+
+                    // 清理申请状态
+                    BakCmd.ClearApply();
+                    hasApply = false;
+                }
+                else
+                {
+                    // 检查投票条件
+                    if (BakCmd.CheckVote())
+                        BakCmd.DoApprove(TSPlayer.Server);
+                }
+            }
+
+            checkFrame = 0;
         }
     }
     #endregion
@@ -784,7 +817,7 @@ public partial class FixTools : TerrariaPlugin
 
         // 清理金属锭
         Main.tile[botX, botY].ClearEverything();
-        Main.tile[botX -1, botY].ClearEverything();
+        Main.tile[botX - 1, botY].ClearEverything();
 
         // 发送更新给所有玩家
         TSPlayer.All.SendTileSquareCentered(topX, topY, 2);

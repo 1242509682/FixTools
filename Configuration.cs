@@ -28,9 +28,17 @@ internal class Configuration
     public int MaxBackup { get; set; } = 30;
     [JsonProperty("备份显示消息", Order = -75)]
     public bool ShowAutoSaveMsg { get; set; } = true;
-    [JsonProperty("导出存档的版本号", Order = -74)]
+    [JsonProperty("投票回档开关", Order = -74)]
+    public bool ApplyVote { get; set; } = true;
+    [JsonProperty("投票过期时间", Order = -73)]
+    public int ApplyTime { get; set; } = 30;
+    [JsonProperty("投票通过概率", Order = -72)]
+    public float VotePassRate { get; set; } = 0.5f;
+    [JsonProperty("投票最少人数", Order = -71)]
+    public int MinVotePlayers { get; set; } = 2;
+    [JsonProperty("导出存档的版本号", Order = -70)]
     public int GameVersion { get; set; } = 315;
-    [JsonProperty("版本号对照参考表", Order = -75)]
+    [JsonProperty("版本号对照参考表", Order = -69)]
     public HashSet<string> Example { get; set; } = [];
 
     #region 废案
@@ -122,7 +130,7 @@ internal class Configuration
         [
             "\n欢迎 拿着{武器类型}{物品图标}的{玩家名} 来到 {服务器名}",
             "在线玩家 [c/FFFFFF:({在线人数}/{服务器上限})]: {在线玩家}",
-            $"指令:/{CmdName} 权限:{CmdName}.use",
+            $"指令:/{pt} 权限:{pt}.use",
             "配置路径: tshock/[c/FF6962:{插件名}]/配置文件.json",
             "TShock官方Q群:816771079",
             "所在队伍:{队伍} {同队人数}/{别队人数}",
@@ -140,7 +148,7 @@ internal class Configuration
             "[c/FFFFFF:2.]智能进服公告、跨版本进服、修复地图区块缺失",
             "[c/FFFFFF:3.]批量改权限、导出权限表、复制文件、宝藏袋传送",
             "[c/FFFFFF:4.]自动注册、自动建GM组、自动配权、进度锁、重置服务器",
-            "[c/FFFFFF:5.]修复物品召唤入侵事件、修复天塔柱刷物品BUG",
+            "[c/FFFFFF:5.]修复物品召唤入侵事件、修复天塔柱刷物品BUG、投票回档",
             "---------",
             "发送[c/FF6962:任意消息]显示下条信息\n",
         ];
@@ -171,6 +179,7 @@ internal class Configuration
         [
              "tshock/145修复小公举/权限表/*.txt",
              "tshock/145修复小公举/自动备份存档/*.zip",
+             "tshock/145修复小公举/临时申请备份/*.plr",
              "tshock/backups/*.bak",
              "tshock/logs/*.log",
              "world/*.wld",

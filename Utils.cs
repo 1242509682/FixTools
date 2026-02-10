@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.IO.Compression;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Xna.Framework;
 using Terraria;
@@ -403,21 +404,21 @@ internal class Utils
         try
         {
             // 扫描复制源文件文件夹
-            if (!Directory.Exists(Commands.CopyDir))
+            if (!Directory.Exists(PoutCmd.CopyDir))
             {
-                Directory.CreateDirectory(Commands.CopyDir);
-                plr.SendMessage($"已创建复制源文件文件夹: {Commands.CopyDir}", color);
+                Directory.CreateDirectory(PoutCmd.CopyDir);
+                plr.SendMessage($"已创建复制源文件文件夹: {PoutCmd.CopyDir}", color);
                 plr.SendMessage($"请将文件放入此文件夹后重试", color);
                 return;
             }
 
             // 获取源文件夹中的所有文件
-            var srcFiles = Directory.GetFiles(Commands.CopyDir, "*", SearchOption.TopDirectoryOnly);
+            var srcFiles = Directory.GetFiles(PoutCmd.CopyDir, "*", SearchOption.TopDirectoryOnly);
 
             if (srcFiles.Length == 0)
             {
                 plr.SendMessage($"复制源文件文件夹中没有文件", color);
-                plr.SendMessage($"文件夹路径: {Commands.CopyDir}", color);
+                plr.SendMessage($"文件夹路径: {PoutCmd.CopyDir}", color);
                 plr.SendMessage($"请将文件放入此文件夹后重试", color);
                 return;
             }
@@ -434,7 +435,7 @@ internal class Utils
 
             // 构建文件列表
             var fileList = new StringBuilder();
-            fileList.AppendLine($"{Commands.CopyDir}:");
+            fileList.AppendLine($"{PoutCmd.CopyDir}:");
             fileList.AppendLine($"找到 {srcFiles.Length} 个文件:");
 
             for (int i = 0; i < srcFiles.Length; i++)
@@ -457,7 +458,7 @@ internal class Utils
                 fileList.AppendLine($"{i + 1}. {path} {(exists ? "" : "(路径不存在)")}");
             }
 
-            fileList.AppendLine($"\n使用: /{CmdName} copy <文件索引> <路径索引>");
+            fileList.AppendLine($"\n使用: /{pt} copy <文件索引> <路径索引>");
             fileList.AppendLine("示例: /pout copy 1 2   (复制第1个文件到第2个路径)");
 
             if (plr.RealPlayer)
@@ -741,5 +742,154 @@ internal class Utils
     //        }
     //    }
     //}
+    #endregion
+
+    #region 格式化备份文件信息
+    public static string FormatBakInfo(string filePath, int index)
+    {
+        try
+        {
+            var name = Path.GetFileNameWithoutExtension(filePath);
+            var time = File.GetCreationTime(filePath);
+            var size = new FileInfo(filePath).Length;
+            var sizeText = size < 1024 * 1024 ?
+                $"{(size / 1024.0):F1}KB" :
+                $"{(size / (1024.0 * 1024.0)):F1}MB";
+
+            return $"{index}. {name} ({time:MM-dd HH:mm}, {sizeText})";
+        }
+        catch
+        {
+            return $"{index}. 文件信息获取失败";
+        }
+    }
+    #endregion
+
+    #region 获取备份文件列表
+    public static List<string> GetBakList()
+    {
+        var list = new List<string>();
+        try
+        {
+            var files = GetBakFiles();
+            for (int i = 0; i < files.Length; i++)
+            {
+                list.Add(FormatBakInfo(files[i], i + 1));
+            }
+        }
+        catch (Exception ex)
+        {
+            TShock.Log.ConsoleError($"获取备份列表失败: {ex}");
+        }
+        return list;
+    }
+    #endregion
+
+    #region 获取备份文件列表
+    public static string[] GetBakFiles()
+    {
+        try
+        {
+            if (!Directory.Exists(WritePlayer.AutoSaveDir))
+                return Array.Empty<string>();
+
+            var files = Directory.GetFiles(WritePlayer.AutoSaveDir, "*.zip")
+                .OrderByDescending(File.GetCreationTime)
+                .ToArray();
+
+            return files;
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
+    }
+    #endregion
+
+    #region 解压并导入指定玩家
+    public static void ExtractAndImport(TSPlayer plr, string zipPath, string name)
+    {
+        // 清空导入存档文件夹
+        if (Directory.Exists(ReaderPlayer.ReaderPlrDir))
+        {
+            foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderPlrDir))
+            {
+                File.Delete(file);
+            }
+        }
+
+        plr.SendMessage($"正在解压: {Path.GetFileName(zipPath)}", color);
+
+        using (var zip = ZipFile.OpenRead(zipPath))
+        {
+            // 查找匹配的.plr文件
+            var plrEntry = zip.Entries.FirstOrDefault(e =>
+                e.Name.Equals($"{name}.plr", StringComparison.OrdinalIgnoreCase));
+
+            if (plrEntry == null)
+            {
+                plr.SendMessage($"未找到玩家 {name} 的备份文件", color);
+                return;
+            }
+
+            // 解压到导入文件夹
+            var destPath = Path.Combine(ReaderPlayer.ReaderPlrDir, plrEntry.Name);
+            plrEntry.ExtractToFile(destPath, true);
+
+            plr.SendMessage($"已提取: {plrEntry.Name}", color2);
+        }
+
+        // 导入存档
+        ReaderPlayer.ReadPlayer(plr, $"{ReaderPlayer.ReaderPlrDir}/{name}.plr");
+
+        // 清空导入文件夹
+        foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderPlrDir))
+            File.Delete(file);
+
+        plr.SendMessage($"已清空导入存档文件夹", color2);
+    }
+    #endregion
+
+    #region 解压并导入所有玩家
+    public static void ExtractAndImportAll(TSPlayer plr, string zipPath)
+    {
+        // 清空导入存档文件夹
+        if (Directory.Exists(ReaderPlayer.ReaderPlrDir))
+        {
+            foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderPlrDir))
+            {
+                File.Delete(file);
+            }
+        }
+
+        plr.SendMessage($"正在解压: {Path.GetFileName(zipPath)}", color);
+
+        int count = 0;
+        using (var zip = ZipFile.OpenRead(zipPath))
+        {
+            foreach (var entry in zip.Entries)
+            {
+                if (entry.Name.EndsWith(".plr", StringComparison.OrdinalIgnoreCase))
+                {
+                    var destPath = Path.Combine(ReaderPlayer.ReaderPlrDir, entry.Name);
+                    entry.ExtractToFile(destPath, true);
+                    count++;
+                }
+            }
+        }
+
+        plr.SendMessage($"已提取 {count} 个存档文件", color2);
+
+        // 导入所有存档
+        ReaderPlayer.ReadPlayer(plr);
+
+        // 清空导入文件夹
+        foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderPlrDir))
+        {
+            File.Delete(file);
+        }
+
+        plr.SendMessage($"已清空导入存档文件夹", color2);
+    }
     #endregion
 }

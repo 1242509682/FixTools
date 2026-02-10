@@ -1,5 +1,4 @@
-﻿using System.IO.Compression;
-using System.Text;
+﻿using System.Text;
 using Terraria;
 using Terraria.ID;
 using TerrariaApi.Server;
@@ -10,7 +9,7 @@ using static FixTools.Utils;
 
 namespace FixTools;
 
-internal class Commands
+internal class PoutCmd
 {
     #region 菜单方法
     private static void HelpCmd(TSPlayer plr)
@@ -22,51 +21,55 @@ internal class Commands
             "[i:3456][C/F2F2C7:开发] [C/BFDFEA:by] [c/00FFFF:羽学] [i:3459]", color);
 
             var mess = new StringBuilder();
-            mess.AppendLine($"/{CmdName} plr ——玩家存档管理菜单");
-            mess.AppendLine($"/{CmdName} save ——自动备份菜单");
-            mess.AppendLine($"/{CmdName} vs ——设置导出版本号");
-            mess.AppendLine($"/{CmdName} join ——跨版本进服开关");
-            mess.AppendLine($"/{CmdName} bag ——宝藏袋传送开关");
-            mess.AppendLine($"/{CmdName} chest ——禁用区域箱子材料");
-            mess.AppendLine($"/{CmdName} motd ——进服公告开关");
-            mess.AppendLine($"/{CmdName} fix ——修复地图区块缺失");
-            mess.AppendLine($"/{CmdName} inv ——修复物品召唤入侵事件");
-            mess.AppendLine($"/{CmdName} ttz ——修复天塔柱刷物品BUG");
-            mess.AppendLine($"/{CmdName} cb ——复制文件");
-            mess.AppendLine($"/{CmdName} rm ——删除文件");
-            mess.AppendLine($"/{CmdName} sql ——改数据表");
-            mess.AppendLine($"/{CmdName} cmd ——执行指令");
-            mess.AppendLine($"/{CmdName} reg ——自动注册");
-            mess.AppendLine($"/{CmdName} add ——批量加权限");
-            mess.AppendLine($"/{CmdName} del ——批量删权限");
-            mess.AppendLine($"/{CmdName} lp ——导出权限表");
-            mess.AppendLine($"/{CmdName} boss ——人数进度锁");
-            mess.AppendLine($"/{CmdName} reset ——重置服务器");
+            mess.AppendLine($"/{pt} plr ——玩家存档管理菜单");
+            mess.AppendLine($"/{pt} save ——自动备份菜单");
+            mess.AppendLine($"/{pt} vote ——投票回档开关");
+            mess.AppendLine($"/{bak} ——投票回档功能");
+            mess.AppendLine($"/{pt} vs ——设置导出版本号");
+            mess.AppendLine($"/{pt} join ——跨版本进服开关");
+            mess.AppendLine($"/{pt} bag ——宝藏袋传送开关");
+            mess.AppendLine($"/{pt} chest ——禁用区域箱子材料");
+            mess.AppendLine($"/{pt} motd ——进服公告开关");
+            mess.AppendLine($"/{pt} fix ——修复地图区块缺失");
+            mess.AppendLine($"/{pt} inv ——修复物品召唤入侵事件");
+            mess.AppendLine($"/{pt} ttz ——修复天塔柱刷物品BUG");
+            mess.AppendLine($"/{pt} cb ——复制文件");
+            mess.AppendLine($"/{pt} rm ——删除文件");
+            mess.AppendLine($"/{pt} sql ——改数据表");
+            mess.AppendLine($"/{pt} cmd ——执行指令");
+            mess.AppendLine($"/{pt} reg ——自动注册");
+            mess.AppendLine($"/{pt} add ——批量加权限");
+            mess.AppendLine($"/{pt} del ——批量删权限");
+            mess.AppendLine($"/{pt} lp ——导出权限表");
+            mess.AppendLine($"/{pt} boss ——人数进度锁");
+            mess.AppendLine($"/{pt} reset ——重置服务器");
             GradMess(plr, mess);
         }
         else
         {
             plr.SendMessage($"《{PluginName}》\n" +
-                            $"/{CmdName} plr ——玩家存档管理菜单\n" +
-                            $"/{CmdName} save ——自动备份菜单\n" +
-                            $"/{CmdName} vs ——设置导出版本号\n" +
-                            $"/{CmdName} join ——跨版本进服开关\n" +
-                            $"/{CmdName} bag ——宝藏袋传送开关\n" +
-                            $"/{CmdName} chest ——禁用区域箱子材料\n" +
-                            $"/{CmdName} motd ——进服公告开关\n" +
-                            $"/{CmdName} fix ——修复地图区块缺失\n" +
-                            $"/{CmdName} inv ——修复物品召唤入侵事件\n" +
-                            $"/{CmdName} ttz ——修复天塔柱刷物品BUG\n" +
-                            $"/{CmdName} copy ——复制文件\n" +
-                            $"/{CmdName} rm ——删除文件\n" +
-                            $"/{CmdName} sql ——改数据表\n" +
-                            $"/{CmdName} cmd ——执行游戏时指令\n" +
-                            $"/{CmdName} reg ——自动注册开关\n" +
-                            $"/{CmdName} add ——批量加权限\n" +
-                            $"/{CmdName} del ——批量删权限\n" +
-                            $"/{CmdName} lp ——导出权限表\n" +
-                            $"/{CmdName} boss ——人数进度锁\n" +
-                            $"/{CmdName} reset ——重置服务器", color);
+                            $"/{pt} plr ——玩家存档管理菜单\n" +
+                            $"/{pt} save ——自动备份菜单\n" +
+                            $"/{pt} vote ——投票回档开关\n" +
+                            $"/{bak} ——投票回档功能\n" +
+                            $"/{pt} vs ——设置导出版本号\n" +
+                            $"/{pt} join ——跨版本进服开关\n" +
+                            $"/{pt} bag ——宝藏袋传送开关\n" +
+                            $"/{pt} chest ——禁用区域箱子材料\n" +
+                            $"/{pt} motd ——进服公告开关\n" +
+                            $"/{pt} fix ——修复地图区块缺失\n" +
+                            $"/{pt} inv ——修复物品召唤入侵事件\n" +
+                            $"/{pt} ttz ——修复天塔柱刷物品BUG\n" +
+                            $"/{pt} copy ——复制文件\n" +
+                            $"/{pt} rm ——删除文件\n" +
+                            $"/{pt} sql ——改数据表\n" +
+                            $"/{pt} cmd ——执行游戏时指令\n" +
+                            $"/{pt} reg ——自动注册开关\n" +
+                            $"/{pt} add ——批量加权限\n" +
+                            $"/{pt} del ——批量删权限\n" +
+                            $"/{pt} lp ——导出权限表\n" +
+                            $"/{pt} boss ——人数进度锁\n" +
+                            $"/{pt} reset ——重置服务器", color);
         }
 
         var AutoBoss = Config.ProgressLock ? "已开启" : "已禁用";
@@ -120,7 +123,7 @@ internal class Commands
     #endregion
 
     #region 主指令方法
-    internal static void pout(CommandArgs args)
+    internal static void Pouts(CommandArgs args)
     {
         var plr = args.Player;
 
@@ -264,6 +267,14 @@ internal class Commands
                     AutoSave(args, plr);
                     break;
 
+                case "申请":
+                case "回档":
+                case "投票":
+                case "vote":
+                case "vt":
+                    SetBool("申请回档投票", plr, () => Config.ApplyVote, (val) => Config.ApplyVote = val);
+                    break;
+
                 case "进度锁":
                 case "pog":
                 case "boss":
@@ -306,7 +317,7 @@ internal class Commands
             case "分钟":
                 if (args.Parameters.Count < 3)
                 {
-                    plr.SendMessage($"用法: /{CmdName} sv min <分钟数>", color);
+                    plr.SendMessage($"用法: /{pt} sv min <分钟数>", color);
                     plr.SendMessage($"当前间隔: {Config.AutoSaveInterval}分钟", color2);
                     return;
                 }
@@ -324,7 +335,7 @@ internal class Commands
             case "保留":
                 if (args.Parameters.Count < 3)
                 {
-                    plr.SendMessage($"用法: /{CmdName} save keep <数量>", color);
+                    plr.SendMessage($"用法: /{pt} save keep <数量>", color);
                     plr.SendMessage($"当前保留: {Config.MaxBackup}个", color2);
                     return;
                 }
@@ -370,13 +381,13 @@ internal class Commands
 
         var mess = new StringBuilder();
         mess.AppendLine($"\n[c/AD89D5:自动备份设置]");
-        mess.AppendLine($"[c/3FAEDB:备份][{state1}] /{CmdName} sv on");
-        mess.AppendLine($"[c/3FAEDB:间隔][{state2}] /{CmdName} sv min <分钟>");
-        mess.AppendLine($"[c/3FAEDB:清理][{state3}] /{CmdName} sv clear");
-        mess.AppendLine($"[c/3FAEDB:保留][{state4}] /{CmdName} sv keep <数量>");
-        mess.AppendLine($"[c/3FAEDB:地图][{state5}] /{CmdName} sv wld");
-        mess.AppendLine($"[c/3FAEDB:数据][{state6}] /{CmdName} sv sql");
-        mess.AppendLine($"[c/3FAEDB:消息][{state7}] /{CmdName} sv msg");
+        mess.AppendLine($"[c/3FAEDB:备份][{state1}] /{pt} sv on");
+        mess.AppendLine($"[c/3FAEDB:间隔][{state2}] /{pt} sv min <分钟>");
+        mess.AppendLine($"[c/3FAEDB:清理][{state3}] /{pt} sv clear");
+        mess.AppendLine($"[c/3FAEDB:保留][{state4}] /{pt} sv keep <数量>");
+        mess.AppendLine($"[c/3FAEDB:地图][{state5}] /{pt} sv wld");
+        mess.AppendLine($"[c/3FAEDB:数据][{state6}] /{pt} sv sql");
+        mess.AppendLine($"[c/3FAEDB:消息][{state7}] /{pt} sv msg");
 
         if (plr.RealPlayer)
             plr.SendMessage(TextGradient(mess.ToString()), color);
@@ -399,7 +410,7 @@ internal class Commands
         if (args.Parameters.Count < 2)
         {
             SetBool("自动注册", plr, () => Config.AutoRegister, (val) => Config.AutoRegister = val);
-            plr.SendMessage($"改新玩家默认密码: /{CmdName} reg 新密码", color);
+            plr.SendMessage($"改新玩家默认密码: /{pt} reg 新密码", color);
             return;
         }
 
@@ -426,7 +437,7 @@ internal class Commands
         if (args.Parameters.Count < 2)
         {
             SetBool("人数进度锁", plr, () => Config.ProgressLock, (val) => Config.ProgressLock = val);
-            plr.SendMessage($"改解锁人数: /{CmdName} boss 人数", color);
+            plr.SendMessage($"改解锁人数: /{pt} boss 人数", color);
             return;
         }
 
@@ -441,7 +452,7 @@ internal class Commands
         if (args.Parameters.Count < 2)
         {
             SetBool("禁用区域箱子材料", plr, () => Config.NoUseRgionCheat, (val) => Config.NoUseRgionCheat = val);
-            plr.SendMessage($"改禁用范围: /{CmdName} chest 格数", color);
+            plr.SendMessage($"改禁用范围: /{pt} chest 格数", color);
             return;
         }
 
@@ -455,7 +466,7 @@ internal class Commands
         if (args.Parameters.Count < 2)
         {
             SetBool("宝藏袋传送", plr, () => Config.TpBagEnabled, (val) => Config.TpBagEnabled = val);
-            plr.SendMessage($"修改关键词: /{CmdName} bag 关键词", color);
+            plr.SendMessage($"修改关键词: /{pt} bag 关键词", color);
             plr.SendMessage($"存在则移除，不再则添加", color2);
             return;
         }
@@ -706,7 +717,7 @@ internal class Commands
         if (args.Parameters.Count < 2 || !args.Parameters[1].Equals("yes", StringComparison.OrdinalIgnoreCase))
         {
             plr.SendMessage(TextGradient($"此操作会清理tshock.sqlite数据库中的指定数据表，且不可逆转！"), color);
-            plr.SendMessage($"确认操作请输入:/{CmdName} sql yes", color);
+            plr.SendMessage($"确认操作请输入:/{pt} sql yes", color);
             return;
         }
 
@@ -741,7 +752,7 @@ internal class Commands
         if (args.Parameters.Count < 2 || !args.Parameters[1].Equals("yes", StringComparison.OrdinalIgnoreCase))
         {
             plr.SendMessage(TextGradient($"此操作会清理当前地图与地图备份、自动备份存档、服务器日志，且不可逆转！"), color);
-            plr.SendMessage($"确认操作请输入:/{CmdName} rm yes", color);
+            plr.SendMessage($"确认操作请输入:/{pt} rm yes", color);
             return;
         }
 
@@ -881,7 +892,7 @@ internal class Commands
         // 如果有参数，执行复制操作
         if (args.Parameters.Count < 3)
         {
-            plr.SendErrorMessage($"用法: /{CmdName} copy <文件索引> <路径索引>");
+            plr.SendErrorMessage($"用法: /{pt} copy <文件索引> <路径索引>");
             return;
         }
 
@@ -1166,9 +1177,9 @@ internal class Commands
         info.AppendLine("4.踢出在线玩家确保数据保存,关闭服务器");
         info.AppendLine("5.根据启动项,重启服务器后生效");
 
-        info.AppendLine($"\n自动修复开关: /{CmdName} fix auto");
+        info.AppendLine($"\n自动修复开关: /{pt} fix auto");
         info.AppendLine("注:自动修复会在刚开服后执行工作并立即重启");
-        info.AppendLine($"\n确认修复请输入: /{CmdName} fix yes");
+        info.AppendLine($"\n确认修复请输入: /{pt} fix yes");
         info.AppendLine("注:此操作会重启服务器，请确保已通知在线玩家!");
 
         if (!plr.RealPlayer)
@@ -1266,7 +1277,7 @@ internal class Commands
         info.AppendLine("没有: 根据server.properties内的参数创建新地图");
         info.AppendLine("7.重置后执行关服不保存,根据启动项自动重启");
 
-        info.AppendLine($"\n确认重置请输入: /{CmdName} reset yes");
+        info.AppendLine($"\n确认重置请输入: /{pt} reset yes");
         info.AppendLine("警告: 此操作不可逆，请确保已备份重要数据!");
 
         if (!plr.RealPlayer)
@@ -1283,9 +1294,9 @@ internal class Commands
         {
             var mess = new StringBuilder();
             mess.Append("\n导出命令使用方法:");
-            mess.Append($"\n导出所有玩家：/{CmdName} p c all");
-            mess.Append($"\n导出指定玩家：/{CmdName} p c 玩家名");
-            mess.Append($"\n导出指定玩家：/{CmdName} p c 账号id");
+            mess.Append($"\n导出所有玩家：/{pt} p c all");
+            mess.Append($"\n导出指定玩家：/{pt} p c 玩家名");
+            mess.Append($"\n导出指定玩家：/{pt} p c 账号id");
             mess.Append($"\n注:账号ID可用/who -i查询");
             GradMess(plr, mess);
             return;
@@ -1315,9 +1326,9 @@ internal class Commands
             ReaderPlayer.ShowPlrFile(plr);
             plr.SendMessage($"\n导入命令使用方法：", color);
             var mess = new StringBuilder();
-            mess.Append($"存档导入给所有玩家：/{CmdName} p r all");
-            mess.Append($"\n存档导入给对应玩家：/{CmdName} p r 存档索引");
-            mess.Append($"\n存档导入给指定玩家：/{CmdName} p r 存档索引 玩家名\n");
+            mess.Append($"存档导入给所有玩家：/{pt} p r all");
+            mess.Append($"\n存档导入给对应玩家：/{pt} p r 存档索引");
+            mess.Append($"\n存档导入给指定玩家：/{pt} p r 存档索引 玩家名\n");
             mess.Append($"\n【对应】和.plr同名玩家，【指定】不同名玩家");
             mess.Append($"\n玩家不存在:自动创建账号,密码为{Config.DefPass}");
             mess.Append($"\n注:存档索引是显示文件列表中的序号");
@@ -1330,7 +1341,7 @@ internal class Commands
         switch (args.Parameters.Count)
         {
             case 3:
-                // 格式: /pout p r all 或 /pout p r 存档索引
+                // 格式: /Pouts p r all 或 /Pouts p r 存档索引
                 string param = args.Parameters[2].ToLower();
                 if (param == "all")
                 {
@@ -1345,17 +1356,17 @@ internal class Commands
                 else
                 {
                     plr.SendErrorMessage("错误：参数格式不正确！");
-                    plr.SendMessage($"正确格式：/{CmdName} p r all", color);
-                    plr.SendMessage($"正确格式：/{CmdName} p r 存档索引", color);
+                    plr.SendMessage($"正确格式：/{pt} p r all", color);
+                    plr.SendMessage($"正确格式：/{pt} p r 存档索引", color);
                 }
                 break;
 
             case 4:
-                // 格式: /pout p r 存档索引 玩家名
+                // 格式: /Pouts p r 存档索引 玩家名
                 if (!int.TryParse(args.Parameters[2], out int fileIdx2))
                 {
                     plr.SendErrorMessage("错误：存档索引必须是数字！");
-                    plr.SendMessage($"正确格式：/{CmdName} p r 存档索引 玩家名", color);
+                    plr.SendMessage($"正确格式：/{pt} p r 存档索引 玩家名", color);
                     return;
                 }
 
@@ -1365,22 +1376,21 @@ internal class Commands
 
             default:
                 plr.SendErrorMessage("参数错误！正确格式：");
-                plr.SendMessage($"/{CmdName} p r all", color);
-                plr.SendMessage($"/{CmdName} p r 存档索引", color);
-                plr.SendMessage($"/{CmdName} p r 存档索引 玩家名", color);
+                plr.SendMessage($"/{pt} p r all", color);
+                plr.SendMessage($"/{pt} p r 存档索引", color);
+                plr.SendMessage($"/{pt} p r 存档索引 玩家名", color);
                 break;
         }
     }
     #endregion
 
-    #region 备份压缩包操作
+    #region 从备份压缩包导入存档给玩家
     private static void ZipPlayer(CommandArgs args, TSPlayer plr)
     {
         try
         {
             // 获取自动备份文件夹中的所有zip文件
-            var zipFiles = Directory.GetFiles(WritePlayer.AutoSaveDir, "*.zip")
-                .OrderByDescending(File.GetCreationTime).ToArray();
+            var zipFiles = GetBakFiles();
 
             if (zipFiles.Length == 0)
             {
@@ -1388,23 +1398,14 @@ internal class Commands
                 return;
             }
 
-            // 清空导入存档文件夹
-            if (Directory.Exists(ReaderPlayer.ReaderPlrDir))
-            {
-                foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderPlrDir))
-                {
-                    File.Delete(file);
-                }
-            }
-
-            // 情况1: /pout p z - 列出备份文件
+            // 情况1: /Pouts p z - 列出备份文件
             if (args.Parameters.Count == 2)
             {
                 ListZips(plr, zipFiles);
                 return;
             }
 
-            // 情况2: /pout p z 玩家名 - 使用最新备份恢复指定玩家
+            // 情况2: /Pouts p z 玩家名 - 使用最新备份恢复指定玩家
             if (args.Parameters.Count == 3)
             {
                 string param = args.Parameters[2];
@@ -1412,8 +1413,8 @@ internal class Commands
                 // 检查是否是数字（索引）
                 if (int.TryParse(param, out int idx))
                 {
-                    plr.SendMessage($"用法: /{CmdName} p z {idx} all", color);
-                    plr.SendMessage($"用法: /{CmdName} p z {idx} 玩家名", color);
+                    plr.SendMessage($"用法: /{pt} p z {idx} all", color);
+                    plr.SendMessage($"用法: /{pt} p z {idx} 玩家名", color);
                     return;
                 }
 
@@ -1424,8 +1425,8 @@ internal class Commands
                 return;
             }
 
-            // 情况3: /pout p z 索引 all - 恢复所有玩家
-            // 情况4: /pout p z 索引 玩家名 - 恢复指定玩家
+            // 情况3: /Pouts p z 索引 all - 恢复所有玩家
+            // 情况4: /Pouts p z 索引 玩家名 - 恢复指定玩家
             if (args.Parameters.Count >= 4)
             {
                 if (!int.TryParse(args.Parameters[2], out int idx) || idx < 1)
@@ -1464,27 +1465,19 @@ internal class Commands
     #endregion
 
     #region 列出备份文件
-    private static void ListZips(TSPlayer plr, string[] zipFiles)
+    public static void ListZips(TSPlayer plr, string[] zipFiles)
     {
         var mess = new StringBuilder();
         mess.AppendLine("自动备份文件列表:");
 
         for (int i = 0; i < zipFiles.Length; i++)
         {
-            var file = zipFiles[i];
-            var name = Path.GetFileNameWithoutExtension(file);
-            var time = File.GetCreationTime(file);
-            var size = new FileInfo(file).Length;
-            var sizeText = size < 1024 * 1024 ?
-                $"{(size / 1024.0):F1}KB" :
-                $"{(size / (1024.0 * 1024.0)):F1}MB";
-
-            mess.AppendLine($"{i + 1}. {name} ({time:MM-dd HH:mm}, {sizeText})");
+            mess.AppendLine(FormatBakInfo(zipFiles[i], i + 1));
         }
 
-        mess.AppendLine($"\n使用最新备份恢复玩家: /{CmdName} p z 玩家名");
-        mess.AppendLine($"恢复所有玩家: /{CmdName} p z 索引 all");
-        mess.AppendLine($"恢复指定玩家: /{CmdName} p z 索引 玩家名");
+        mess.AppendLine($"\n使用最新备份恢复玩家: /{pt} p z 玩家名");
+        mess.AppendLine($"恢复所有玩家: /{pt} p z 索引 all");
+        mess.AppendLine($"恢复指定玩家: /{pt} p z 索引 玩家名");
         mess.AppendLine($"注意:索引为压缩包的序号,最新的是1,");
         mess.AppendLine($"每次执行前后都会清空《导入存档》文件夹");
 
@@ -1495,86 +1488,15 @@ internal class Commands
     }
     #endregion
 
-    #region 解压并导入指定玩家
-    private static void ExtractAndImport(TSPlayer plr, string zipPath, string name)
-    {
-        plr.SendMessage($"正在解压: {Path.GetFileName(zipPath)}", color);
-
-        using (var zip = ZipFile.OpenRead(zipPath))
-        {
-            // 查找匹配的.plr文件
-            var plrEntry = zip.Entries.FirstOrDefault(e =>
-                e.Name.Equals($"{name}.plr", StringComparison.OrdinalIgnoreCase));
-
-            if (plrEntry == null)
-            {
-                plr.SendMessage($"未找到玩家 {name} 的备份文件", color);
-                return;
-            }
-
-            // 解压到导入文件夹
-            var destPath = Path.Combine(ReaderPlayer.ReaderPlrDir, plrEntry.Name);
-            plrEntry.ExtractToFile(destPath, true);
-
-            plr.SendMessage($"已提取: {plrEntry.Name}", color2);
-        }
-
-        // 导入存档
-        ReaderPlayer.ReadPlayer(plr, $"{ReaderPlayer.ReaderPlrDir}/{name}.plr");
-
-        // 清空导入文件夹
-        foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderPlrDir))
-        {
-            File.Delete(file);
-        }
-
-        plr.SendMessage($"已清空导入存档文件夹", color2);
-    }
-    #endregion
-
-    #region 解压并导入所有玩家
-    private static void ExtractAndImportAll(TSPlayer plr, string zipPath)
-    {
-        plr.SendMessage($"正在解压: {Path.GetFileName(zipPath)}", color);
-
-        int count = 0;
-        using (var zip = ZipFile.OpenRead(zipPath))
-        {
-            foreach (var entry in zip.Entries)
-            {
-                if (entry.Name.EndsWith(".plr", StringComparison.OrdinalIgnoreCase))
-                {
-                    var destPath = Path.Combine(ReaderPlayer.ReaderPlrDir, entry.Name);
-                    entry.ExtractToFile(destPath, true);
-                    count++;
-                }
-            }
-        }
-
-        plr.SendMessage($"已提取 {count} 个存档文件", color2);
-
-        // 导入所有存档
-        ReaderPlayer.ReadPlayer(plr);
-
-        // 清空导入文件夹
-        foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderPlrDir))
-        {
-            File.Delete(file);
-        }
-
-        plr.SendMessage($"已清空导入存档文件夹", color2);
-    }
-    #endregion
-
     #region 显示玩家存档命令的帮助信息
     private static void ShowPlayerHelp(TSPlayer plr)
     {
         var mess = new StringBuilder();
 
         mess.AppendLine("\n[c/AD89D5:玩家存档管理指令]");
-        mess.AppendLine($"[c/3FAEDB:导出] /{CmdName} p c");
-        mess.AppendLine($"[c/3FAEDB:导入] /{CmdName} p r");
-        mess.AppendLine($"[c/3FAEDB:从备份导入] /{CmdName} p z");
+        mess.AppendLine($"[c/3FAEDB:导出] /{pt} p c");
+        mess.AppendLine($"[c/3FAEDB:导入] /{pt} p r");
+        mess.AppendLine($"[c/3FAEDB:从备份导入] /{pt} p z");
 
         // 获取版本显示字符串
         string vsText = GetVSText(Config.GameVersion);
