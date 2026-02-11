@@ -785,7 +785,7 @@ internal class Utils
     }
     #endregion
 
-    #region 获取备份文件列表
+    #region 获取备份文件压缩包
     public static string[] GetBakFiles()
     {
         try
