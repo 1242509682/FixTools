@@ -18,7 +18,7 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 2, 11);
+    public override Version Version => new(2026, 2, 12);
     public override string Description => "本插件仅TShock测试版期间维护,指令/pout";
     #endregion
 
@@ -42,6 +42,7 @@ public partial class FixTools : TerrariaPlugin
         ServerApi.Hooks.ServerLeave.Register(this, this.OnServerLeave);
         GetDataHandlers.PlayerUpdate.Register(this.OnPlayerUpdate);
         GetDataHandlers.PlaceObject.Register(this.OnPlaceObject);
+        GetDataHandlers.MassWireOperation.Register(this.OnWire);
         ServerApi.Hooks.NetGetData.Register(this, OnNetGetData);
         ServerApi.Hooks.GameUpdate.Register(this, OnGameUpdate);
         ServerApi.Hooks.NpcAIUpdate.Register(this, OnNpcAIUpdate);
@@ -65,6 +66,7 @@ public partial class FixTools : TerrariaPlugin
             ServerApi.Hooks.ServerLeave.Deregister(this, this.OnServerLeave);
             GetDataHandlers.PlayerUpdate.UnRegister(this.OnPlayerUpdate);
             GetDataHandlers.PlaceObject.UnRegister(this.OnPlaceObject);
+            GetDataHandlers.MassWireOperation.UnRegister(this.OnWire);
             ServerApi.Hooks.NetGetData.Deregister(this, OnNetGetData);
             ServerApi.Hooks.GameUpdate.Deregister(this, OnGameUpdate);
             ServerApi.Hooks.NpcAIUpdate.Deregister(this, OnNpcAIUpdate);
@@ -101,11 +103,11 @@ public partial class FixTools : TerrariaPlugin
         if (!Directory.Exists(PoutCmd.MapDir))
             Directory.CreateDirectory(PoutCmd.MapDir);
         // 创建导出存档文件夹
-        if (!Directory.Exists(WritePlayer.WritePlrDir))
-            Directory.CreateDirectory(WritePlayer.WritePlrDir);
+        if (!Directory.Exists(WritePlayer.WriteDir))
+            Directory.CreateDirectory(WritePlayer.WriteDir);
         // 创建导入存档文件夹
-        if (!Directory.Exists(ReaderPlayer.ReaderPlrDir))
-            Directory.CreateDirectory(ReaderPlayer.ReaderPlrDir);
+        if (!Directory.Exists(ReaderPlayer.ReaderDir))
+            Directory.CreateDirectory(ReaderPlayer.ReaderDir);
         // 创建自动备份文件夹
         if (!Directory.Exists(WritePlayer.AutoSaveDir))
             Directory.CreateDirectory(WritePlayer.AutoSaveDir);
@@ -787,78 +789,29 @@ public partial class FixTools : TerrariaPlugin
     private void OnPlaceObject(object? sender, GetDataHandlers.PlaceObjectEventArgs e)
     {
         var plr = e.Player;
-        if (plr is null || !plr.RealPlayer || !plr.Active || !plr.IsLoggedIn || !Config.FixPlaceObject)
+        if (plr is null || !plr.RealPlayer ||
+            !plr.Active || !plr.IsLoggedIn ||
+            !Config.FixPlaceObject)
             return;
 
-        // 检查是否为天塔柱等目标物品
-        if (TargetItem(e.Type))
+        // 修复天塔柱刷物品BUG
+        if (FixPlaceObject.TargetItem(e.Type))
         {
-            // 检查下方一格
-            int checkY = e.Y + 1;
-            if (checkY < Main.maxTilesY && Main.tile[e.X, checkY].active())
-            {
-                // 获取下方的图格对象
-                var tile = Main.tile[e.X, checkY];
-
-                // 如果下方是金属锭或传送机
-                if (tile.type == TileID.MetalBars || tile.type == TileID.Teleporter)
-                {
-                    // 清理金属锭和上面的天塔柱
-                    ClearBugTiles(plr, e.X, e.Y, e.X, checkY);
-                }
-            }
+            FixPlaceObject.FixPlace(e);
         }
     }
+    #endregion
 
-    private void ClearBugTiles(TSPlayer plr, int topX, int topY, int botX, int botY)
+    #region 精密线控仪事件
+    private void OnWire(object? sender, GetDataHandlers.MassWireOperationEventArgs e)
     {
-        // 清理天塔柱
-        Main.tile[topX, topY].ClearEverything();
+        var plr = e.Player;
+        if (plr is null || !plr.RealPlayer ||
+           !plr.Active || !plr.IsLoggedIn)
+            return;
 
-        // 清理金属锭
-        Main.tile[botX, botY].ClearEverything();
-        Main.tile[botX - 1, botY].ClearEverything();
+        WorldTile.FixSnapshot(e, plr);
 
-        // 发送更新给所有玩家
-        TSPlayer.All.SendTileSquareCentered(topX, topY, 2);
-
-        for (int i = 0; i < TShock.Players.Length; i++)
-        {
-            for (int j = 0; j < Main.maxSectionsX; j++)
-            {
-                for (int k = 0; k < Main.maxSectionsY; k++)
-                {
-                    Netplay.Clients[i].TileSections[j, k] = false;
-                }
-            }
-        }
-
-        plr.SendMessage(TextGradient("[{插件名}] 检测到刷物品BUG！正在清理..."), color);
-    }
-
-    private bool TargetItem(short type)
-    {
-        // 目标物品列表
-        int[] targetList =
-        {
-
-            TileID.LunarMonolith,      // 天塔柱
-            TileID.WaterFountain,      // 喷泉
-            TileID.Cannon,             // 各种大炮
-            TileID.SnowballLauncher,   // 雪球发射器
-            TileID.MusicBoxes,         // 八音盒
-            TileID.BloodMoonMonolith,  // 血月天塔柱
-            TileID.ShimmerMonolith,    // 以太天塔柱
-            TileID.ShadowCandle,       // 暗影蜡烛
-            TileID.PeaceCandle,        // 和平蜡烛
-            TileID.Candelabras,        // 烛台
-            TileID.PlatinumCandelabra, // 铂金烛台
-            TileID.PlatinumCandelabra, // 铂金蜡烛
-            TileID.Lamps,              // 柱式灯
-            TileID.Lever,              // 遥控杆
-        };
-
-        return Array.IndexOf(targetList, type) >= 0;
     }
     #endregion
 

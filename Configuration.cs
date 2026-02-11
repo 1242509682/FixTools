@@ -14,8 +14,10 @@ internal class Configuration
     [JsonProperty("注册默认密码", Order = -98)]
     public string DefPass { get; set; } = "123456";
 
-    [JsonProperty("自动备份存档", Order = -80)]
+    [JsonProperty("自动备份存档", Order = -81)]
     public bool AutoSavePlayer { get; set; } = true;
+    [JsonProperty("备份地图快照", Order = -80)]
+    public bool SaveSnapshot { get; set; } = true;
     [JsonProperty("自动备份地图", Order = -79)]
     public bool AutoSaveWorld { get; set; } = true;
     [JsonProperty("自动备份数据库", Order = -79)]
@@ -147,7 +149,7 @@ internal class Configuration
             $"《插件支持功能》适配版本:{TShockVS}",
             "[c/FFFFFF:1.]导入导出SSC存档、自动备份存档、禁用区域箱子材料",
             "[c/FFFFFF:2.]智能进服公告、跨版本进服、修复地图区块缺失",
-            "[c/FFFFFF:3.]批量改权限、导出权限表、复制文件、宝藏袋传送",
+            "[c/FFFFFF:3.]批量改权限、导出权限表、复制文件、宝藏袋传送、修复局部图格",
             "[c/FFFFFF:4.]自动注册、自动建GM组、自动配权、进度锁、重置服务器",
             "[c/FFFFFF:5.]修复物品召唤入侵事件、修复天塔柱刷物品BUG、投票回档",
             "---------",
@@ -253,7 +255,7 @@ internal class Configuration
         Permission["default"] =
         [
             "tshock.npc.startinvasion","tshock.npc.summonboss","tshock.spectating",
-            "tshock.admin.seeplayerids","tshock.world.time.usemoondial",
+            "tshock.admin.seeplayerids","tshock.world.time.usemoondial","tshock.npc.startdd2",
             "tshock.tp.spawn","tshock.tp.self","tshock.tp.home","tshock.tp.npc","tshock.admin.house",
             "tshock.world.movenpc","tshock.admin.warp","tshock.npc.clearanglerquests",
             "zhipm.vi","zhipm.vs","zhipm.sort", "challenger.fun","challenger.tip","weaponplus.plus",

@@ -7,26 +7,12 @@ using Terraria.ID;
 using Terraria.Utilities;
 using TShockAPI;
 using static FixTools.FixTools;
+using static FixTools.PlayerState;
 
 namespace FixTools;
 
 internal class Utils
 {
-    #region 异步执行
-    public static void Tack()
-    {
-        var task = Task.Run(delegate
-        {
-            // 写你的执行方法
-        });
-
-        task.ContinueWith(delegate
-        {
-            // 执行完毕后回到主线程
-        });
-    }
-    #endregion
-
     #region 单色与随机色
     public static UnifiedRandom rand = Main.rand; // 随机器
     public static Color color => new(240, 250, 150); // 单行色
@@ -810,9 +796,9 @@ internal class Utils
     public static void ExtractAndImport(TSPlayer plr, string zipPath, string name)
     {
         // 清空导入存档文件夹
-        if (Directory.Exists(ReaderPlayer.ReaderPlrDir))
+        if (Directory.Exists(ReaderPlayer.ReaderDir))
         {
-            foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderPlrDir))
+            foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderDir))
             {
                 File.Delete(file);
             }
@@ -833,17 +819,17 @@ internal class Utils
             }
 
             // 解压到导入文件夹
-            var destPath = Path.Combine(ReaderPlayer.ReaderPlrDir, plrEntry.Name);
+            var destPath = Path.Combine(ReaderPlayer.ReaderDir, plrEntry.Name);
             plrEntry.ExtractToFile(destPath, true);
 
             plr.SendMessage($"已提取: {plrEntry.Name}", color2);
         }
 
         // 导入存档
-        ReaderPlayer.ReadPlayer(plr, $"{ReaderPlayer.ReaderPlrDir}/{name}.plr");
+        ReaderPlayer.ReadPlayer(plr, $"{ReaderPlayer.ReaderDir}/{name}.plr");
 
         // 清空导入文件夹
-        foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderPlrDir))
+        foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderDir))
             File.Delete(file);
 
         plr.SendMessage($"已清空导入存档文件夹", color2);
@@ -854,9 +840,9 @@ internal class Utils
     public static void ExtractAndImportAll(TSPlayer plr, string zipPath)
     {
         // 清空导入存档文件夹
-        if (Directory.Exists(ReaderPlayer.ReaderPlrDir))
+        if (Directory.Exists(ReaderPlayer.ReaderDir))
         {
-            foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderPlrDir))
+            foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderDir))
             {
                 File.Delete(file);
             }
@@ -871,7 +857,7 @@ internal class Utils
             {
                 if (entry.Name.EndsWith(".plr", StringComparison.OrdinalIgnoreCase))
                 {
-                    var destPath = Path.Combine(ReaderPlayer.ReaderPlrDir, entry.Name);
+                    var destPath = Path.Combine(ReaderPlayer.ReaderDir, entry.Name);
                     entry.ExtractToFile(destPath, true);
                     count++;
                 }
@@ -884,7 +870,7 @@ internal class Utils
         ReaderPlayer.ReadPlayer(plr);
 
         // 清空导入文件夹
-        foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderPlrDir))
+        foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderDir))
         {
             File.Delete(file);
         }

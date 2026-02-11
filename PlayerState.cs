@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using TShockAPI;
+using Terraria;
 
 namespace FixTools;
 
@@ -19,18 +20,7 @@ internal class PlayerState
         // BOSS宝藏袋掉落坐标表
         public List<Vector2> BagPos { get; set; } = new();
         // 投票回档数据
-        public VoteData? MyApply { get; set; } = null;
-    }
-    #endregion
-
-    #region 回档投票数据类
-    public class VoteData
-    {
-        public int ApplyIdx { get; set; } = 0;           // 申请的备份索引
-        public DateTime ApplyTime { get; set; }          // 申请时间
-        public int VoteYes { get; set; } = 0;            // 同意票数
-        public int VoteNo { get; set; } = 0;             // 反对票数
-        public List<string> Voted { get; set; } = new(); // 已投票玩家
+        public BakCmd.VoteData? MyApply { get; set; } = null;
     }
     #endregion
 
@@ -45,3 +35,4 @@ internal class PlayerState
     }
     #endregion
 }
+

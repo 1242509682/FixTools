@@ -16,7 +16,7 @@ internal class WritePlayer
     private static string now = string.Empty;  // 当前操作玩家时间
     public static readonly string AutoSaveDir = Path.Combine(MainPath, "自动备份存档"); // 自动备份角色路径
     public static readonly string SqlPath = Path.Combine(TShock.SavePath, "tshock.sqlite"); // 数据库路径
-    public static readonly string WritePlrDir = Path.Combine(MainPath, "导出存档"); // 导出角色路径
+    public static readonly string WriteDir = Path.Combine(MainPath, "导出存档"); // 导出角色路径
 
     // 从恋恋那抄来的
     private class MyPlayer : TSPlayer
@@ -101,6 +101,12 @@ internal class WritePlayer
                 File.Copy(SqlPath, destSqlPath, true);
                 if (showMag)
                     plr.SendMessage($"已{state}数据库文件:{sqlName}", color2);
+            }
+
+            // 保存 TileSnapshot 地图快照
+            if (autoSave && Config.SaveSnapshot)
+            {
+                WorldTile.SaveSnapshot(plr, showMag, worldName, exportDir);
             }
 
             string sourcePath = $"{Dir}/{worldName + now}";

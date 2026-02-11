@@ -1,3 +1,4 @@
 copy bin\Release\net9.0\FixTools.dll C:\Users\羽学\Desktop\Beta\ServerPlugins
+copy bin\Release\net9.0\FixTools.pdb C:\Users\羽学\Desktop\Beta\ServerPlugins
 rd /s /q "C:\Users\羽学\Desktop\Beta\tshock\145修复小公举\"
 taskkill /F /IM TShock.Server.exe

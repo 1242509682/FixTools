@@ -11,7 +11,7 @@ namespace FixTools;
 
 public class ReaderPlayer
 {
-    public static readonly string ReaderPlrDir = Path.Combine(MainPath, "导入存档"); // 导入角色路径
+    public static readonly string ReaderDir = Path.Combine(MainPath, "导入存档"); // 导入角色路径
 
     #region 通过索引导入存档（不带玩家名）
     public static void ReadPlayerByIndex(TSPlayer plr, int idx)
@@ -19,7 +19,7 @@ public class ReaderPlayer
         try
         {
             // 获取所有.plr文件
-            string[] files = Directory.GetFiles(ReaderPlrDir, "*.plr");
+            string[] files = Directory.GetFiles(ReaderDir, "*.plr");
             if (files.Length == 0)
             {
                 plr.SendMessage("导入存档文件夹中没有.plr文件", color);
@@ -52,7 +52,7 @@ public class ReaderPlayer
         try
         {
             // 获取所有.plr文件
-            string[] files = Directory.GetFiles(ReaderPlrDir, "*.plr");
+            string[] files = Directory.GetFiles(ReaderDir, "*.plr");
             if (files.Length == 0)
             {
                 plr.SendMessage("导入存档文件夹中没有.plr文件", color);
@@ -83,18 +83,18 @@ public class ReaderPlayer
     public static void ShowPlrFile(TSPlayer plr)
     {
         // 获取源文件，只显示.plr文件
-        var srcFiles = Directory.GetFiles(ReaderPlrDir, "*.plr");
+        var srcFiles = Directory.GetFiles(ReaderDir, "*.plr");
         if (srcFiles.Length == 0)
         {
             plr.SendMessage($"导入存档文件夹中没有.plr文件", color);
-            plr.SendMessage($"文件夹路径: {ReaderPlrDir}", color);
+            plr.SendMessage($"文件夹路径: {ReaderDir}", color);
             plr.SendMessage($"请将.plr放入此文件夹后重试", color);
             return;
         }
 
         // 构建文件列表
         var fileList = new StringBuilder();
-        fileList.AppendLine($"{ReaderPlrDir}:");
+        fileList.AppendLine($"{ReaderDir}:");
         fileList.AppendLine($"找到 {srcFiles.Length} 个存档文件:");
 
         for (int i = 0; i < srcFiles.Length; i++)
@@ -186,12 +186,12 @@ public class ReaderPlayer
     #region 导入所有存档给对应玩家,存在账号则覆盖，不在则创建账号
     public static void ReadPlayer(TSPlayer plr)
     {
-        string[] files = Directory.GetFiles(ReaderPlrDir);
+        string[] files = Directory.GetFiles(ReaderDir);
 
         if (files.Count() == 0)
         {
             plr.SendMessage("导入存档文件夹为空", color2);
-            plr.SendMessage($"请放入【.plr文件】再使用指令:\n{ReaderPlrDir}", color);
+            plr.SendMessage($"请放入【.plr文件】再使用指令:\n{ReaderDir}", color);
             return;
         }
 

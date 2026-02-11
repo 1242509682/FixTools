@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.IO.Compression;
+using System.Text;
 using Terraria;
 using Terraria.ID;
 using TerrariaApi.Server;
@@ -25,6 +26,7 @@ internal class PoutCmd
             mess.AppendLine($"/{pt} save ——自动备份菜单");
             mess.AppendLine($"/{pt} vote ——投票回档开关");
             mess.AppendLine($"/{bak} ——投票回档功能");
+            mess.AppendLine($"/{pt} rw ——修复局部图格");
             mess.AppendLine($"/{pt} vs ——设置导出版本号");
             mess.AppendLine($"/{pt} join ——跨版本进服开关");
             mess.AppendLine($"/{pt} bag ——宝藏袋传送开关");
@@ -52,6 +54,7 @@ internal class PoutCmd
                             $"/{pt} save ——自动备份菜单\n" +
                             $"/{pt} vote ——投票回档开关\n" +
                             $"/{bak} ——投票回档功能\n" +
+                            $"/{pt} rw ——修复局部图格\n" +
                             $"/{pt} vs ——设置导出版本号\n" +
                             $"/{pt} join ——跨版本进服开关\n" +
                             $"/{pt} bag ——宝藏袋传送开关\n" +
@@ -136,6 +139,13 @@ internal class PoutCmd
         {
             switch (args.Parameters[0].ToLower())
             {
+                case "快照":
+                case "rw":
+                    {
+                        DoSnapshot(args, plr);
+                    }
+                    break;
+
                 case "p":
                 case "plr":
                 case "玩家存档":
@@ -1212,7 +1222,7 @@ internal class PoutCmd
             p?.Kick($"{PluginName} 服务器已开始重置...", true, true);
         });
 
-        WritePlayer.ExportAll(plr, WritePlayer.WritePlrDir);
+        WritePlayer.ExportAll(plr, WritePlayer.WriteDir);
         DoCommand(plr, Config.BeforeCMD);
         ClearSql(plr);
 
@@ -1307,12 +1317,12 @@ internal class PoutCmd
         if (operation == "all")
         {
             // 导出所有玩家
-            WritePlayer.ExportAll(plr, WritePlayer.WritePlrDir);
+            WritePlayer.ExportAll(plr, WritePlayer.WriteDir);
         }
         else
         {
             // 导出指定玩家
-            WritePlayer.ExportPlayer(operation, plr, WritePlayer.WritePlrDir);
+            WritePlayer.ExportPlayer(operation, plr, WritePlayer.WriteDir);
         }
     }
     #endregion
@@ -1529,6 +1539,70 @@ internal class PoutCmd
         // 如果找不到对应的版本名称，只显示数字
         return vs.ToString();
     }
+    #endregion
+
+    #region 地图快照修复图格指令
+    private static void DoSnapshot(CommandArgs args, TSPlayer plr)
+    {
+        if (args.Parameters.Count < 2)
+        {
+            var list = GetBakList();
+            if (list.Count == 0)
+            {
+                plr.SendMessage("暂无自动备份", color);
+                return;
+            }
+
+            var sb = new StringBuilder();
+            sb.AppendLine("当前备份:");
+            foreach (var item in list)
+                sb.AppendLine(item);
+
+            if (plr.RealPlayer)
+                plr.SendMessage(TextGradient(sb.ToString()), color);
+            else
+                plr.SendMessage(sb.ToString(), color);
+
+            plr.SendMessage($"用法: /{pt} rw 索引", color);
+            return;
+        }
+
+        if (!int.TryParse(args.Parameters[1], out int idx) || idx < 1)
+        {
+            plr.SendErrorMessage("索引必须是正整数");
+            return;
+        }
+
+        var files = GetBakFiles();
+        if (idx > files.Length)
+        {
+            plr.SendErrorMessage($"索引超出范围，共有 {files.Length} 个备份");
+            return;
+        }
+
+        string zipPath = files[idx - 1];
+        string? savePath = null;
+
+        using (var zip = ZipFile.OpenRead(zipPath))
+        {
+            var snapEntry = zip.Entries.FirstOrDefault(e =>
+                e.Name.EndsWith(".tws", StringComparison.OrdinalIgnoreCase));
+
+            if (snapEntry == null)
+            {
+                plr.SendErrorMessage($"备份文件 {Path.GetFileName(zipPath)} 中未找到世界快照 (.tws)，请重新备份");
+                return;
+            }
+
+            savePath = Path.Combine(ReaderPlayer.ReaderDir, $"snap_{DateTime.Now:HHmmss}.tws");
+            snapEntry.Open().CopyTo(File.Create(savePath));
+            plr.SendSuccessMessage($"已加载世界快照: {snapEntry.Name}");
+        }
+
+        plr.SetData("rwWire", true);
+        plr.SetData("rwFile", savePath);
+        plr.SendInfoMessage("请使用 [i:3611] 红电线 拉取需要恢复的区域");
+    } 
     #endregion
 
 }

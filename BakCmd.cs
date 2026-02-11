@@ -8,6 +8,17 @@ namespace FixTools;
 
 internal class BakCmd
 {
+    #region 回档投票数据类
+    public class VoteData
+    {
+        public int ApplyIdx { get; set; } = 0;           // 申请的备份索引
+        public DateTime ApplyTime { get; set; }          // 申请时间
+        public int VoteYes { get; set; } = 0;            // 同意票数
+        public int VoteNo { get; set; } = 0;             // 反对票数
+        public List<string> Voted { get; set; } = new(); // 已投票玩家
+    }
+    #endregion
+
     #region 投票回档管理方法
     public static VoteData? curVote = null;
     public static string? curName = null;
