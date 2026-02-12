@@ -39,7 +39,7 @@ internal class Configuration
     [JsonProperty("投票最少人数", Order = -71)]
     public int MinVotePlayers { get; set; } = 2;
     [JsonProperty("导出存档的版本号", Order = -70)]
-    public int GameVersion { get; set; } = 315;
+    public int GameVersion { get; set; } = 317;
     [JsonProperty("版本号对照参考表", Order = -69)]
     public HashSet<string> Example { get; set; } = [];
 
