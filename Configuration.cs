@@ -19,7 +19,7 @@ internal class Configuration
     [JsonProperty("备份地图快照", Order = -80)]
     public bool SaveSnapshot { get; set; } = true;
     [JsonProperty("自动备份地图", Order = -79)]
-    public bool AutoSaveWorld { get; set; } = true;
+    public bool AutoSaveWorld { get; set; } = false;
     [JsonProperty("自动备份数据库", Order = -79)]
     public bool AutoSaveSqlite { get; set; } = true;
     [JsonProperty("备份存档分钟数", Order = -78)]

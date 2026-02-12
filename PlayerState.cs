@@ -21,6 +21,15 @@ internal class PlayerState
         public List<Vector2> BagPos { get; set; } = new();
         // 投票回档数据
         public BakCmd.VoteData? MyApply { get; set; } = null;
+
+        // 地图快照路径,用来修复局部图格
+        public string rwSnap { get; set; } = string.Empty;
+        // 标牌文件路径,用来修复标牌信息
+        public string rwSign { get; set; } = string.Empty;
+        // 获取到快照,开启精密线控仪检测
+        public bool rwWire { get; set; } = false;
+        // 撤销修复文件路径（后进先出栈）
+        public List<string> rwUndoStack = new();
     }
     #endregion
 
