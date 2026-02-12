@@ -142,7 +142,7 @@ internal class PoutCmd
                 case "快照":
                 case "rw":
                     {
-                        DoSnapshot(args, plr);
+                        WorldTile.DoSnapshot(args, plr);
                     }
                     break;
 
@@ -1539,70 +1539,6 @@ internal class PoutCmd
         // 如果找不到对应的版本名称，只显示数字
         return vs.ToString();
     }
-    #endregion
-
-    #region 地图快照修复图格指令
-    private static void DoSnapshot(CommandArgs args, TSPlayer plr)
-    {
-        if (args.Parameters.Count < 2)
-        {
-            var list = GetBakList();
-            if (list.Count == 0)
-            {
-                plr.SendMessage("暂无自动备份", color);
-                return;
-            }
-
-            var sb = new StringBuilder();
-            sb.AppendLine("当前备份:");
-            foreach (var item in list)
-                sb.AppendLine(item);
-
-            if (plr.RealPlayer)
-                plr.SendMessage(TextGradient(sb.ToString()), color);
-            else
-                plr.SendMessage(sb.ToString(), color);
-
-            plr.SendMessage($"用法: /{pt} rw 索引", color);
-            return;
-        }
-
-        if (!int.TryParse(args.Parameters[1], out int idx) || idx < 1)
-        {
-            plr.SendErrorMessage("索引必须是正整数");
-            return;
-        }
-
-        var files = GetBakFiles();
-        if (idx > files.Length)
-        {
-            plr.SendErrorMessage($"索引超出范围，共有 {files.Length} 个备份");
-            return;
-        }
-
-        string zipPath = files[idx - 1];
-        string? savePath = null;
-
-        using (var zip = ZipFile.OpenRead(zipPath))
-        {
-            var snapEntry = zip.Entries.FirstOrDefault(e =>
-                e.Name.EndsWith(".tws", StringComparison.OrdinalIgnoreCase));
-
-            if (snapEntry == null)
-            {
-                plr.SendErrorMessage($"备份文件 {Path.GetFileName(zipPath)} 中未找到世界快照 (.tws)，请重新备份");
-                return;
-            }
-
-            savePath = Path.Combine(ReaderPlayer.ReaderDir, $"snap_{DateTime.Now:HHmmss}.tws");
-            snapEntry.Open().CopyTo(File.Create(savePath));
-            plr.SendSuccessMessage($"已加载世界快照: {snapEntry.Name}");
-        }
-
-        plr.SetData("rwWire", true);
-        plr.SetData("rwFile", savePath);
-        plr.SendInfoMessage("请使用 [i:3611] 红电线 拉取需要恢复的区域");
-    } 
     #endregion
 
 }

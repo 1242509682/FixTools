@@ -228,14 +228,30 @@ public partial class FixTools : TerrariaPlugin
         {
             data.Motd = 0;
             data.Register = false;
-
-            // 如果离开的玩家是申请人，取消申请
-            if (BakCmd.curName == plr.Name)
-            {
-                TSPlayer.All.SendMessage(TextGradient($"[{PluginName}] {plr.Name} 离开,申请已取消"), color);
-                BakCmd.ClearApply();
-            }
         }
+
+        // 清理该玩家残留的临时文件
+        string? snap = plr.GetData<string>("rwSnap");
+        if (snap != null && File.Exists(snap))
+        {
+            File.Delete(snap);
+            plr.RemoveData("rwSnap");
+        }
+        string? sign = plr.GetData<string>("rwSign");
+        if (sign != null && File.Exists(sign))
+        {
+            File.Delete(sign);
+            plr.RemoveData("rwSign");
+        }
+        plr.RemoveData("rwWire");
+
+        // 如果离开的玩家是申请人，取消申请
+        if (BakCmd.curName == plr.Name)
+        {
+            TSPlayer.All.SendMessage(TextGradient($"[{PluginName}] {plr.Name} 离开,申请已取消"), color);
+            BakCmd.ClearApply();
+        }
+
     }
     #endregion
 
