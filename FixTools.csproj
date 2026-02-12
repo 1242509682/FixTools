@@ -8,18 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OTAPI.Upcoming" Version="3.3.7" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="TerrariaServer">
-      <HintPath>依赖项\TerrariaServer.dll</HintPath>
-		<Private>False</Private>
-    </Reference>
-    <Reference Include="TShockAPI">
-      <HintPath>依赖项\TShockAPI.dll</HintPath>
-		<Private>False</Private>
-    </Reference>
+    <PackageReference Include="UnrealMultiple.TShock-Beta" Version="6.0.1" />
   </ItemGroup>
 
 </Project>
