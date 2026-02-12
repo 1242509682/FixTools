@@ -26,7 +26,7 @@ public partial class FixTools : TerrariaPlugin
     public static string PluginName => "145修复小公举"; // 插件名称
     public static string pt => "pout"; // 主指令名称
     public static string bak => "bak"; // 投票指令名
-    public static string TShockVS => "c5a1747"; // 适配版本号
+    public static string TShockVS => "1770f2d"; // 适配版本号
     public static readonly string MainPath = Path.Combine(TShock.SavePath, PluginName); // 主文件夹路径
     public static readonly string ConfigPath = Path.Combine(MainPath, "配置文件.json"); // 配置文件路径
     #endregion
@@ -756,38 +756,38 @@ public partial class FixTools : TerrariaPlugin
     #region 跨版本进服方法
     private void OnNetGetData(GetDataEventArgs args)
     {
-        if (args.MsgID == PacketTypes.ConnectRequest && Config.NoVisualLimit)
+        if (args.MsgID != PacketTypes.ConnectRequest || !Config.NoVisualLimit)
         {
-            args.Handled = true;
-
-            if (Main.netMode is not 2) return;
-
-            RemoteClient client = Netplay.Clients[args.Msg.whoAmI];
-            RemoteAddress ip = client.Socket.GetRemoteAddress();
-
-            if (Main.dedServ && Netplay.IsBanned(ip))
-            {
-                // 因封禁,禁止玩家连接
-                NetMessage.TrySendData(MessageID.Kick, args.Msg.whoAmI, -1, Lang.mp[3].ToNetworkText());
-            }
-            else if (client.State == 0)
-            {
-                if (string.IsNullOrEmpty(Netplay.ServerPassword))
-                {
-                    // 无密码服务器，直接通过
-                    client.State = 1;
-                    NetMessage.TrySendData(MessageID.PlayerInfo, args.Msg.whoAmI);
-                }
-                else
-                {
-                    // 需要密码验证
-                    client.State = -1;
-                    NetMessage.TrySendData(MessageID.RequestPassword, args.Msg.whoAmI);
-                }
-            }
+            return;
         }
 
-        // FixNpcBuffKick(args);
+        args.Handled = true;
+
+        if (Main.netMode is not 2) return;
+
+        RemoteClient client = Netplay.Clients[args.Msg.whoAmI];
+        RemoteAddress ip = client.Socket.GetRemoteAddress();
+
+        if (Main.dedServ && Netplay.IsBanned(ip))
+        {
+            // 因封禁,禁止玩家连接
+            NetMessage.TrySendData(MessageID.Kick, args.Msg.whoAmI, -1, Lang.mp[3].ToNetworkText());
+        }
+        else if (client.State == 0)
+        {
+            if (string.IsNullOrEmpty(Netplay.ServerPassword))
+            {
+                // 无密码服务器，直接通过
+                client.State = 1;
+                NetMessage.TrySendData(MessageID.PlayerInfo, args.Msg.whoAmI);
+            }
+            else
+            {
+                // 需要密码验证
+                client.State = -1;
+                NetMessage.TrySendData(MessageID.RequestPassword, args.Msg.whoAmI);
+            }
+        }
     }
     #endregion
 

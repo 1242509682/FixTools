@@ -43,15 +43,6 @@ internal class Configuration
     [JsonProperty("版本号对照参考表", Order = -69)]
     public HashSet<string> Example { get; set; } = [];
 
-    #region 废案
-    //[JsonProperty("修复添加NPC增益踢人", Order = -57)]
-    //public bool FixNpcBuffKick { get; set; } = true;
-    //[JsonProperty("修复容错比例", Order = -58)]
-    //public float FixBuffTolerance { get; set; } = 0.1f;
-    //[JsonProperty("NPC增益修正表", Order = -59)] 
-    //public Dictionary<int, short> FixBuffTime { get; set; } = new();
-    #endregion
-
     [JsonProperty("跨版本进服", Order = -60)]
     public bool NoVisualLimit { get; set; } = true;
     [JsonProperty("宝藏袋传送", Order = -59)]
