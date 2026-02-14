@@ -226,10 +226,10 @@ internal class WritePlayer
     {
         if (player is null) return false;
 
-        var playerNama = player.name;
+        var playerName = player.name;
 
         //移除不合法的字符
-        playerNama = FormatFileName(playerNama);
+        playerName = FormatFileName(playerName);
         string worldname = new string(Main.worldName);
 
         //移除不合法的字符
@@ -241,7 +241,7 @@ internal class WritePlayer
         data.Player = player;
         data._isCloudSave = false;
         FileData fileData = data;
-        fileData._path = $"{exportDir}/{playerNama}.plr";
+        fileData._path = $"{exportDir}/{playerName}.plr";
         data.SetPlayTime(new TimeSpan(0)); // 不设置游玩时间,还得遍历所有玩家消耗服务器性能
         Main.LocalFavoriteData.ClearEntry(data);
 
@@ -289,7 +289,7 @@ internal class WritePlayer
         catch (Exception ex)
         {
             TShock.Log.ConsoleError("导出plr文件错误:\n" + ex.ToString());
-            TShock.Log.ConsoleError($"名字：{playerNama},路径：\n{data.Path}");
+            TShock.Log.ConsoleError($"名字：{playerName},路径：\n{data.Path}");
             return false;
         }
     }

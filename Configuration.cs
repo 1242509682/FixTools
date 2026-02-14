@@ -30,6 +30,7 @@ internal class Configuration
     public int MaxBackup { get; set; } = 30;
     [JsonProperty("备份显示消息", Order = -75)]
     public bool ShowAutoSaveMsg { get; set; } = true;
+
     [JsonProperty("投票回档开关", Order = -74)]
     public bool ApplyVote { get; set; } = true;
     [JsonProperty("投票过期时间", Order = -73)]
@@ -38,15 +39,18 @@ internal class Configuration
     public float VotePassRate { get; set; } = 0.5f;
     [JsonProperty("投票最少人数", Order = -71)]
     public int MinVotePlayers { get; set; } = 2;
+
     [JsonProperty("导出存档的版本号", Order = -70)]
     public int GameVersion { get; set; } = 317;
     [JsonProperty("版本号对照参考表", Order = -69)]
     public HashSet<string> Example { get; set; } = [];
 
-    [JsonProperty("跨版本进服", Order = -60)]
+    [JsonProperty("跨版本进服", Order = -61)]
     public bool NoVisualLimit { get; set; } = true;
-    [JsonProperty("宝藏袋传送", Order = -59)]
+    [JsonProperty("宝藏袋传送", Order = -60)]
     public bool TpBagEnabled { get; set; } = true;
+    [JsonProperty("显示伤害排行", Order = -59)]
+    public bool NPCDamageTracker { get; set; } = true;
     [JsonProperty("宝藏袋传送关键词", Order = -58)]
     public List<string> AllowTpBagText { get; set; } = new();
     [JsonProperty("自动修复地图缺失", Order = -57)]
@@ -139,10 +143,10 @@ internal class Configuration
             "---------",
             $"《插件支持功能》适配版本:{TShockVS}",
             "[c/FFFFFF:1.]导入导出SSC存档、自动备份存档、禁用区域箱子材料",
-            "[c/FFFFFF:2.]智能进服公告、跨版本进服、修复地图区块缺失",
+            "[c/FFFFFF:2.]智能进服公告、跨版本进服、修复地图区块缺失、boss伤害排行",
             "[c/FFFFFF:3.]批量改权限、导出权限表、复制文件、宝藏袋传送、修复局部图格",
             "[c/FFFFFF:4.]自动注册、自动建GM组、自动配权、进度锁、重置服务器",
-            "[c/FFFFFF:5.]修复物品召唤入侵事件、修复天塔柱刷物品BUG、投票回档",
+            "[c/FFFFFF:5.]修复召唤入侵事件、修复天塔柱刷物品BUG、投票回档",
             "---------",
             "发送[c/FF6962:任意消息]显示下条信息\n",
         ];
@@ -174,6 +178,8 @@ internal class Configuration
              "tshock/145修复小公举/权限表/*.txt",
              "tshock/145修复小公举/自动备份存档/*.zip",
              "tshock/145修复小公举/临时申请备份/*.plr",
+             "tshock/145修复小公举/导入存档/*.plr",
+             "tshock/145修复小公举/导入存档/*.tws",
              "tshock/backups/*.bak",
              "tshock/logs/*.log",
              "world/*.wld",
@@ -192,7 +198,7 @@ internal class Configuration
 
         AllowTpBagText = 
         [
-            "宝藏袋","bag"
+            "bag"
         ];
 
         AllowRegionGroup = 

@@ -1,6 +1,7 @@
-﻿using Microsoft.Xna.Framework;
-using On.Terraria.GameContent;
+﻿using System.Text;
+using Microsoft.Xna.Framework;
 using Terraria;
+using Terraria.GameContent;
 using Terraria.ID;
 using Terraria.Net;
 using TerrariaApi.Server;
@@ -18,7 +19,7 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 2, 13);
+    public override Version Version => new(2026, 2, 14);
     public override string Description => "本插件仅TShock测试版期间维护,指令/pout";
     #endregion
 
@@ -50,8 +51,7 @@ public partial class FixTools : TerrariaPlugin
         ServerApi.Hooks.NpcKilled.Register(this, OnNPCKilled);
         ServerApi.Hooks.DropBossBag.Register(this, OnDropBossBag);
         ServerApi.Hooks.ServerChat.Register(this, this.OnChat);
-        CraftingRequests.CanCraftFromChest += OnCanCraftFromChest;
-
+        On.Terraria.GameContent.CraftingRequests.CanCraftFromChest += OnCanCraftFromChest;
         TShockAPI.Commands.ChatCommands.Add(new Command($"{pt}.use", PoutCmd.Pouts, pt, "pt"));
         TShockAPI.Commands.ChatCommands.Add(new Command(string.Empty, BakCmd.bakCmd, bak));
     }
@@ -74,8 +74,7 @@ public partial class FixTools : TerrariaPlugin
             ServerApi.Hooks.NpcKilled.Deregister(this, OnNPCKilled);
             ServerApi.Hooks.DropBossBag.Deregister(this, OnDropBossBag);
             ServerApi.Hooks.ServerChat.Deregister(this, this.OnChat);
-            CraftingRequests.CanCraftFromChest -= OnCanCraftFromChest;
-
+            On.Terraria.GameContent.CraftingRequests.CanCraftFromChest -= OnCanCraftFromChest;
             TShockAPI.Commands.ChatCommands.RemoveAll(x =>
             x.CommandDelegate == PoutCmd.Pouts ||
             x.CommandDelegate == BakCmd.bakCmd);
@@ -124,10 +123,11 @@ public partial class FixTools : TerrariaPlugin
 
         Console.WriteLine(string.Empty);
         Console.WriteLine($"[本插件支持]");
-        TShock.Log.ConsoleInfo($"1.导入或导出玩家强制开荒存档、自动备份存档");
-        TShock.Log.ConsoleInfo($"2.进服公告、跨版本进服、自动修复地图区块缺失");
-        TShock.Log.ConsoleInfo($"3.批量改权限、导出权限表、批量删文件、复制文件");
+        TShock.Log.ConsoleInfo($"1.导入导出SSC存档、自动备份存档、禁用区域箱子材料");
+        TShock.Log.ConsoleInfo($"2.智能进服公告、跨版本进服、修复地图区块缺失、boss伤害排行");
+        TShock.Log.ConsoleInfo($"3.批量改权限、导出权限表、复制文件、宝藏袋传送、修复局部图格");
         TShock.Log.ConsoleInfo($"4.自动注册、自动建GM组、自动配权、进度锁、重置服务器");
+        TShock.Log.ConsoleInfo($"5.修复召唤入侵事件、修复天塔柱刷物品BUG、投票回档");
         TShock.Log.ConsoleInfo($"指令/{pt} 权限:{pt}.use");
         TShock.Log.ConsoleInfo($"配置文件路径:{ConfigPath}");
         Console.WriteLine(string.Empty);
@@ -189,7 +189,7 @@ public partial class FixTools : TerrariaPlugin
 
         var user = TShock.UserAccounts.GetUserAccountByName(plr.Name);
 
-        var motd = GetData(plr.Name);
+        var data = GetData(plr.Name);
         if (user is null)
         {
             var group = TShock.Config.Settings.DefaultRegistrationGroupName;
@@ -203,7 +203,7 @@ public partial class FixTools : TerrariaPlugin
                 NewUser.CreateBCryptHash(Config.DefPass);
                 TShock.UserAccounts.AddUserAccount(NewUser);
 
-                motd.Register = true;
+                data.Register = true;
             }
             catch (Exception ex)
             {
@@ -212,7 +212,8 @@ public partial class FixTools : TerrariaPlugin
         }
         else
         {
-            motd.Motd = 1;
+            data.Motd = 1;
+
         }
     }
     #endregion
@@ -241,7 +242,6 @@ public partial class FixTools : TerrariaPlugin
             TSPlayer.All.SendMessage(TextGradient($"[{PluginName}] {plr.Name} 离开,申请已取消"), color);
             BakCmd.ClearApply();
         }
-
     }
     #endregion
 
@@ -295,6 +295,67 @@ public partial class FixTools : TerrariaPlugin
         if (Config.FixStartInvasion)
         {
             StartInvasion(plr);
+        }
+
+        // 当boss掉落宝藏袋时候发送伤害排行
+        if (Config.NPCDamageTracker && data.needSend)
+        {
+            var attempts = NPCDamageTracker.RecentAttempts();
+            if (!attempts.Any()) return;
+
+            foreach (var DaInfo in attempts)
+            {
+                if (data.SentTrackers.Contains(DaInfo)) continue;
+
+                // 反射获取 _list 和 _worldCredit 获取更完整的数据
+                var fldList = typeof(NPCDamageTracker).GetField("_list", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                var entries = fldList?.GetValue(DaInfo) as System.Collections.IList;
+                if (entries == null) continue;
+
+                // 提取玩家条目和世界条目
+                var pList = new List<NPCDamageTracker.PlayerCreditEntry>();
+                int worldDmg = 0;
+                foreach (var evt in entries)
+                {
+                    if (evt is NPCDamageTracker.PlayerCreditEntry p) pList.Add(p);
+                    else if (evt is NPCDamageTracker.WorldCreditEntry w) worldDmg = w.Damage;
+                }
+
+                int totalDmg = pList.Sum(p => p.Damage);
+                var topPlayer = pList.OrderByDescending(p => p.Damage).FirstOrDefault();
+                string mvpInfo = topPlayer != null ? $"[c/FF726E:{topPlayer.PlayerName}] {topPlayer.Damage}伤害" : "无";
+
+                // BOSS 名称和战斗用时
+                var bossName = DaInfo.Name.ToString();
+                int dur = DaInfo.Duration;
+                var ts = TimeSpan.FromSeconds(dur / 60.0);
+                string timeStr = $"{(int)ts.TotalMinutes}分{ts.Seconds:D2}秒";
+
+                var sb = new StringBuilder();
+                sb.AppendLine($"{bossName} {timeStr} 参战 [c/FF726E:{pList.Count}] 位");
+                sb.AppendLine($"总伤害:[c/FF726E:{totalDmg}] 世界伤害:[c/61BFE2:{worldDmg}]");
+
+                int idx = 1;
+                foreach (var p in pList.OrderByDescending(p => p.Damage))
+                {
+                    int perc = totalDmg > 0 ? (int)((double)p.Damage / totalDmg * 100) : 0;
+                    sb.AppendLine($"{idx}.{p.PlayerName} 伤害:{p.Damage} 占比:{perc}%");
+                    idx++;
+                }
+
+                var tip = "\n      [i:3455][c/AD89D5:伤][c/D68ACA:害][c/DF909A:排][c/E5A894:行][c/E5BE94:榜][i:3454]\n";
+                sb.AppendLine($"\n本场Mvp {mvpInfo}");
+                if (Config.TpBagEnabled && Config.AllowTpBagText != null && Config.AllowTpBagText.Count > 0)
+                    sb.Append($"发送消息 [c/FF6962:{string.Join(" 或 ", Config.AllowTpBagText)}] 将传送到宝藏袋位置 ");
+
+                plr.SendMessage(TextGradient(tip + sb.ToString() + "\n"), color);
+
+                // 过滤掉播报过的boss 缓存不超过3个
+                data.SentTrackers.Add(DaInfo);
+                if (data.SentTrackers.Count > 3) 
+                    data.SentTrackers.RemoveAt(0);
+            }
+            data.needSend = false;
         }
     }
     #endregion
@@ -437,30 +498,18 @@ public partial class FixTools : TerrariaPlugin
             if (data.BagPos.Count > 10)
                 data.BagPos.RemoveAt(0);// 移除最早的元素（索引0）
 
+            // 显示boss伤害排行
+            if (Config.NPCDamageTracker)
+                data.needSend = true;
+
             // 处理死亡玩家复活
             if (plr.Dead)
             {
                 plr.RespawnTimer = 0; // 立即复活
                 plr.Spawn(PlayerSpawnContext.ReviveFromDeath); // 触发复活
-                plr.SendMessage(TextGradient($"[{PluginName}] 因击败[c/FF5149:{npc.FullName}]正为你自动复活!"), color);
+                plr.SendMessage(TextGradient($"因击败[c/FF5149:{npc.FullName}]正为你自动复活!"), color);
             }
         }
-
-        var itemID = args.ItemId;
-        var ItemStack = args.Stack;
-        var Icon = ItemIcon(itemID, ItemStack);
-
-        // 发送击败消息
-        string mess = $"\n[{PluginName}]\n" +
-                     $"恭喜大家击败了[c/FF5149:{npc.FullName}]掉落了{Icon}\n" +
-                     $"获取输出排名:[c/FFFFFF:/boss伤害]\n";
-
-        if (Config.AllowTpBagText is not null && Config.AllowTpBagText.Count > 0)
-        {
-            mess += $"发送消息: [c/FF6962:{string.Join(" 或 ", Config.AllowTpBagText)}] 将传送到宝藏袋位置 ";
-        }
-
-        TSPlayer.All.SendMessage(TextGradient(string.Join("\n", mess)), color);
     }
 
     // 处理宝藏袋传送
@@ -704,7 +753,7 @@ public partial class FixTools : TerrariaPlugin
             switch (Invtype)
             {
                 case 1: // 哥布林入侵
-                case 2: // 霜月入侵
+                case 2: // 雪人军团入侵
                     Main.invasionSize = 80 + 40 * MaxLife200_Player;
                     break;
                 case 3: // 海盗入侵

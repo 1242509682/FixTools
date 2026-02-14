@@ -13,8 +13,8 @@ public class ReaderPlayer
 {
     public static readonly string ReaderDir = Path.Combine(MainPath, "导入存档"); // 导入角色路径
 
-    #region 通过索引导入存档（不带玩家名）
-    public static void ReadPlayerByIndex(TSPlayer plr, int idx)
+    #region 通过plr的文件索引导入存档给对应玩家,如果指定名字则导入给指定玩家
+    public static void ReadPlayerByIndex(TSPlayer plr, int idx, string? name = null)
     {
         try
         {
@@ -36,40 +36,10 @@ public class ReaderPlayer
 
             // 获取选中的文件
             string file = files[idx - 1];
-            ReadPlayer(plr, file);
-        }
-        catch (Exception ex)
-        {
-            TShock.Log.ConsoleError($"按索引导入存档错误:{ex}");
-            plr.SendErrorMessage("导入失败，请查看控制台错误");
-        }
-    }
-    #endregion
-
-    #region 通过索引导入存档给指定玩家
-    public static void ReadPlayerByIndex(TSPlayer plr, int idx, string name)
-    {
-        try
-        {
-            // 获取所有.plr文件
-            string[] files = Directory.GetFiles(ReaderDir, "*.plr");
-            if (files.Length == 0)
-            {
-                plr.SendMessage("导入存档文件夹中没有.plr文件", color);
-                return;
-            }
-
-            // 检查索引是否有效
-            if (idx < 1 || idx > files.Length)
-            {
-                plr.SendMessage($"索引 {idx} 无效，有效范围: 1-{files.Length}", color);
-                ShowPlrFile(plr);
-                return;
-            }
-
-            // 获取选中的文件
-            string file = files[idx - 1];
-            ReadPlayer(plr, name, file);
+            if (string.IsNullOrEmpty(name))
+                ReadPlayer(plr, file);
+            else
+                ReadPlayer(plr, name, file);
         }
         catch (Exception ex)
         {
@@ -236,13 +206,13 @@ public class ReaderPlayer
 
         TSPlayer plr = new TSPlayer(byte.MaxValue - 1);
 
-        typeof(TSPlayer).GetField("FakePlayer", 
+        typeof(TSPlayer).GetField("FakePlayer",
             System.Reflection.BindingFlags.NonPublic |
-            System.Reflection.BindingFlags.Default | 
+            System.Reflection.BindingFlags.Default |
             System.Reflection.BindingFlags.Instance)?.
             SetValue(plr, data.Player);
 
-        plr.Account = GetOrGenerateAccount(data.Player);
+        plr.Account = GetOrGenerateAccount(data.Player)!;
         plr.PlayerData = TShock.CharacterDB.GetPlayerData(plr, plr.Account.ID);
         plr.IsLoggedIn = true;
         plr.State = 10;
