@@ -1,7 +1,4 @@
-﻿using System.Text;
-using Microsoft.Xna.Framework;
-using Terraria;
-using Terraria.GameContent;
+﻿using Terraria;
 using Terraria.ID;
 using Terraria.Net;
 using TerrariaApi.Server;
@@ -19,7 +16,7 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 2, 14);
+    public override Version Version => new(2026, 2, 15);
     public override string Description => "本插件仅TShock测试版期间维护,指令/pout";
     #endregion
 
@@ -46,12 +43,13 @@ public partial class FixTools : TerrariaPlugin
         GetDataHandlers.MassWireOperation.Register(this.OnWire);
         ServerApi.Hooks.NetGetData.Register(this, OnNetGetData);
         ServerApi.Hooks.GameUpdate.Register(this, OnGameUpdate);
-        ServerApi.Hooks.NpcAIUpdate.Register(this, OnNpcAIUpdate);
-        ServerApi.Hooks.NpcStrike.Register(this, OnNPCStrike);
-        ServerApi.Hooks.NpcKilled.Register(this, OnNPCKilled);
-        ServerApi.Hooks.DropBossBag.Register(this, OnDropBossBag);
+        ServerApi.Hooks.NpcAIUpdate.Register(this, ProgressLock.OnNpcAIUpdate);
+        ServerApi.Hooks.NpcStrike.Register(this, ProgressLock.OnNPCStrike);
+        ServerApi.Hooks.NpcKilled.Register(this, ProgressLock.OnNPCKilled);
+        ServerApi.Hooks.DropBossBag.Register(this, DropBossBags.OnDropBossBag);
         ServerApi.Hooks.ServerChat.Register(this, this.OnChat);
-        On.Terraria.GameContent.CraftingRequests.CanCraftFromChest += OnCanCraftFromChest;
+        On.Terraria.GameContent.CraftingRequests.CanCraftFromChest += CanCraft.OnCanCraftFromChest;
+        On.Terraria.GameContent.BossDamageTracker.OnBossKilled += DamageTrackers.OnBossKilled;
         TShockAPI.Commands.ChatCommands.Add(new Command($"{pt}.use", PoutCmd.Pouts, pt, "pt"));
         TShockAPI.Commands.ChatCommands.Add(new Command(string.Empty, BakCmd.bakCmd, bak));
     }
@@ -69,12 +67,13 @@ public partial class FixTools : TerrariaPlugin
             GetDataHandlers.MassWireOperation.UnRegister(this.OnWire);
             ServerApi.Hooks.NetGetData.Deregister(this, OnNetGetData);
             ServerApi.Hooks.GameUpdate.Deregister(this, OnGameUpdate);
-            ServerApi.Hooks.NpcAIUpdate.Deregister(this, OnNpcAIUpdate);
-            ServerApi.Hooks.NpcStrike.Deregister(this, OnNPCStrike);
-            ServerApi.Hooks.NpcKilled.Deregister(this, OnNPCKilled);
-            ServerApi.Hooks.DropBossBag.Deregister(this, OnDropBossBag);
+            ServerApi.Hooks.NpcAIUpdate.Deregister(this, ProgressLock.OnNpcAIUpdate);
+            ServerApi.Hooks.NpcStrike.Deregister(this, ProgressLock.OnNPCStrike);
+            ServerApi.Hooks.NpcKilled.Deregister(this, ProgressLock.OnNPCKilled);
+            ServerApi.Hooks.DropBossBag.Deregister(this, DropBossBags.OnDropBossBag);
             ServerApi.Hooks.ServerChat.Deregister(this, this.OnChat);
-            On.Terraria.GameContent.CraftingRequests.CanCraftFromChest -= OnCanCraftFromChest;
+            On.Terraria.GameContent.CraftingRequests.CanCraftFromChest -= CanCraft.OnCanCraftFromChest;
+            On.Terraria.GameContent.BossDamageTracker.OnBossKilled -= DamageTrackers.OnBossKilled;
             TShockAPI.Commands.ChatCommands.RemoveAll(x =>
             x.CommandDelegate == PoutCmd.Pouts ||
             x.CommandDelegate == BakCmd.bakCmd);
@@ -294,68 +293,7 @@ public partial class FixTools : TerrariaPlugin
         // 修复玩家使用物品召唤入侵后未正确触发入侵事件的情况
         if (Config.FixStartInvasion)
         {
-            StartInvasion(plr);
-        }
-
-        // 当boss掉落宝藏袋时候发送伤害排行
-        if (Config.NPCDamageTracker && data.needSend)
-        {
-            var attempts = NPCDamageTracker.RecentAttempts();
-            if (!attempts.Any()) return;
-
-            foreach (var DaInfo in attempts)
-            {
-                if (data.SentTrackers.Contains(DaInfo)) continue;
-
-                // 反射获取 _list 和 _worldCredit 获取更完整的数据
-                var fldList = typeof(NPCDamageTracker).GetField("_list", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                var entries = fldList?.GetValue(DaInfo) as System.Collections.IList;
-                if (entries == null) continue;
-
-                // 提取玩家条目和世界条目
-                var pList = new List<NPCDamageTracker.PlayerCreditEntry>();
-                int worldDmg = 0;
-                foreach (var evt in entries)
-                {
-                    if (evt is NPCDamageTracker.PlayerCreditEntry p) pList.Add(p);
-                    else if (evt is NPCDamageTracker.WorldCreditEntry w) worldDmg = w.Damage;
-                }
-
-                int totalDmg = pList.Sum(p => p.Damage);
-                var topPlayer = pList.OrderByDescending(p => p.Damage).FirstOrDefault();
-                string mvpInfo = topPlayer != null ? $"[c/FF726E:{topPlayer.PlayerName}] {topPlayer.Damage}伤害" : "无";
-
-                // BOSS 名称和战斗用时
-                var bossName = DaInfo.Name.ToString();
-                int dur = DaInfo.Duration;
-                var ts = TimeSpan.FromSeconds(dur / 60.0);
-                string timeStr = $"{(int)ts.TotalMinutes}分{ts.Seconds:D2}秒";
-
-                var sb = new StringBuilder();
-                sb.AppendLine($"{bossName} {timeStr} 参战 [c/FF726E:{pList.Count}] 位");
-                sb.AppendLine($"总伤害:[c/FF726E:{totalDmg}] 世界伤害:[c/61BFE2:{worldDmg}]");
-
-                int idx = 1;
-                foreach (var p in pList.OrderByDescending(p => p.Damage))
-                {
-                    int perc = totalDmg > 0 ? (int)((double)p.Damage / totalDmg * 100) : 0;
-                    sb.AppendLine($"{idx}.{p.PlayerName} 伤害:{p.Damage} 占比:{perc}%");
-                    idx++;
-                }
-
-                var tip = "\n      [i:3455][c/AD89D5:伤][c/D68ACA:害][c/DF909A:排][c/E5A894:行][c/E5BE94:榜][i:3454]\n";
-                sb.AppendLine($"\n本场Mvp {mvpInfo}");
-                if (Config.TpBagEnabled && Config.AllowTpBagText != null && Config.AllowTpBagText.Count > 0)
-                    sb.Append($"发送消息 [c/FF6962:{string.Join(" 或 ", Config.AllowTpBagText)}] 将传送到宝藏袋位置 ");
-
-                plr.SendMessage(TextGradient(tip + sb.ToString() + "\n"), color);
-
-                // 过滤掉播报过的boss 缓存不超过3个
-                data.SentTrackers.Add(DaInfo);
-                if (data.SentTrackers.Count > 3) 
-                    data.SentTrackers.RemoveAt(0);
-            }
-            data.needSend = false;
+            FixStartInvasion.StartInvasion(plr);
         }
     }
     #endregion
@@ -407,143 +345,6 @@ public partial class FixTools : TerrariaPlugin
     }
     #endregion
 
-    #region 人数进度锁
-    private void OnNpcAIUpdate(NpcAiUpdateEventArgs args)
-    {
-        var npc = args.Npc;
-        if (!Config.ProgressLock || npc is null || !npc.active ||
-            Config.UnLockNpc.Contains(npc.FullName))
-            return;
-
-        // 人数足够 不阻止
-        int PlayerCount = TShock.Utils.GetActivePlayerCount();
-        if (PlayerCount >= Config.UnLockCount)
-            return;
-
-        if (Config.LockNpc.Contains(npc.FullName))
-        {
-            npc.active = false;
-            npc.type = 0;
-            npc.netUpdate = true;
-            TShock.Utils.Broadcast($"在线人数不足:{PlayerCount}/{Config.UnLockCount}人," +
-                                   $"禁止召唤:{npc.FullName}", color);
-
-            TSPlayer.All.SendData(PacketTypes.NpcUpdate, "", npc.whoAmI);
-            args.Handled = true;
-        }
-    }
-
-    private void OnNPCStrike(NpcStrikeEventArgs args)
-    {
-        var npc = args.Npc;
-        if (!Config.ProgressLock || npc is null || !npc.active ||
-            Config.UnLockNpc.Contains(npc.FullName))
-            return;
-
-        // 人数足够 不阻止
-        int PlayerCount = TShock.Utils.GetActivePlayerCount();
-        if (PlayerCount >= Config.UnLockCount) return;
-
-        if (Config.LockNpc.Contains(npc.FullName))
-        {
-            npc.active = false;
-            npc.type = 0;
-            npc.netUpdate = true;
-            TShock.Utils.Broadcast($"在线人数不足:{PlayerCount}/{Config.UnLockCount}人," +
-                                   $"禁止召唤:{npc.FullName}", color);
-
-            TSPlayer.All.SendData(PacketTypes.NpcUpdate, "", npc.whoAmI);
-            args.Handled = true;
-        }
-    }
-
-    private void OnNPCKilled(NpcKilledEventArgs args)
-    {
-        var npc = args.npc;
-        if (!Config.ProgressLock || npc is null || !npc.active ||
-            Config.UnLockNpc.Contains(npc.FullName))
-            return;
-
-        // 人数不够不解锁
-        int PlayerCount = TShock.Utils.GetActivePlayerCount();
-        if (PlayerCount < Config.UnLockCount) return;
-
-        // 杀过一次就解锁
-        if (Config.LockNpc.Contains(npc.FullName))
-        {
-            Config.UnLockNpc.Add(npc.FullName);
-            Config.Write();
-        }
-    }
-    #endregion
-
-    #region 宝藏袋掉落事件
-    private void OnDropBossBag(DropBossBagEventArgs args)
-    {
-        if (!Config.TpBagEnabled) return;
-        var npc = Main.npc[args.NpcArrayIndex];
-
-        // 计算宝藏袋位置（Boss死亡位置）
-        Vector2 bagPos = new Vector2(args.Position.X, args.Position.Y);
-        var plrs = TShock.Players.Where(p => p != null && p.RealPlayer && p.Active && p.IsLoggedIn).ToList();
-        foreach (var plr in plrs)
-        {
-            // 将新的宝藏袋位置添加到列表末尾（最近的在最后）
-            var data = GetData(plr.Name);
-
-            if (!data.BagPos.Contains(bagPos))
-                data.BagPos.Add(bagPos);
-
-            // 限制列表大小，只保留最近10个
-            if (data.BagPos.Count > 10)
-                data.BagPos.RemoveAt(0);// 移除最早的元素（索引0）
-
-            // 显示boss伤害排行
-            if (Config.NPCDamageTracker)
-                data.needSend = true;
-
-            // 处理死亡玩家复活
-            if (plr.Dead)
-            {
-                plr.RespawnTimer = 0; // 立即复活
-                plr.Spawn(PlayerSpawnContext.ReviveFromDeath); // 触发复活
-                plr.SendMessage(TextGradient($"因击败[c/FF5149:{npc.FullName}]正为你自动复活!"), color);
-            }
-        }
-    }
-
-    // 处理宝藏袋传送
-    private void TpBag(string text, TSPlayer plr)
-    {
-        if (!Config.TpBagEnabled)
-        {
-            plr.SendMessage(TextGradient("宝藏袋传送功能未启用!"), color);
-            return;
-        }
-
-        var data = GetData(plr.Name);
-
-        // 检查玩家是否有位置列表
-        if (data.BagPos.Count == 0)
-        {
-            plr.SendMessage(TextGradient("当前[c/FF5149:没有可用的]宝藏袋位置!"), color);
-            return;
-        }
-
-        // 获取并移除列表的最后一个元素（最近的位置）
-        int lastIndex = data.BagPos.Count - 1;
-        Vector2 bagPos = data.BagPos[lastIndex];
-        plr.Teleport(bagPos.X, bagPos.Y);
-        data.BagPos.RemoveAt(lastIndex);
-
-        // 显示剩余位置数量
-        var mess = data.BagPos.Count > 0 ? $"[{PluginName}] 还有 [c/3FAEDB:{data.BagPos.Count}] 个宝藏袋位置可用" :
-                                           $"[{PluginName}] 这是 [c/FF534A:最后一个] 宝藏袋位置";
-
-        plr.SendMessage(TextGradient(mess), color);
-    }
-    #endregion
-
     #region 玩家聊天事件显示功能相关信息（交互型方法）
     private void OnChat(ServerChatEventArgs args)
     {
@@ -566,7 +367,7 @@ public partial class FixTools : TerrariaPlugin
             // 检查是否包含任意一个关键词
             if (Config.AllowTpBagText.Any(Text.Contains))
             {
-                TpBag(Text, plr);
+                DropBossBags.TpBag(Text, plr);
                 return;
             }
         }
@@ -596,207 +397,6 @@ public partial class FixTools : TerrariaPlugin
                     data.Motd = 0;
                     data.SendTime = DateTime.MinValue;
                 }
-            }
-        }
-    }
-    #endregion
-
-    #region 阻止合成区域内附近箱子方法（判断范围600像素 ≈ 37.5格）
-    private bool OnCanCraftFromChest(On.Terraria.GameContent.CraftingRequests.orig_CanCraftFromChest orig, Chest chest, int whoAmI)
-    {
-        // 首先调用原方法进行基础检查
-        bool Result = orig(chest, whoAmI);
-
-        // 配置项关闭 不拦截
-        if (!Config.NoUseRgionCheat) return Result;
-
-        // 如果原方法已经返回false，直接返回false
-        if (!Result) return false;
-
-        // 获取玩家对象
-        TSPlayer plr = TShock.Players[whoAmI];
-        if (plr == null || !plr.Active || !plr.RealPlayer) return Result;
-
-        // 检查玩家是否有超级管理员权限
-        if (Config.AllowRegionGroup.Contains(plr.Group.Name) ||
-            plr.Group.HasPermission("*")) return Result;
-
-        // 1. 检查箱子是否在任何区域内
-        var ChestRegions = GetChest(chest);
-        if (ChestRegions.Count == 0) return Result; // 箱子不在任何区域内，允许合成
-
-        // 2. 检查玩家是否有权限访问箱子所在的任何一个区域
-        bool hasPerm = false;
-        Region? firstRegion = null;
-
-        foreach (var region in ChestRegions)
-        {
-            firstRegion = region; // 记录第一个区域用于消息
-
-            if (plr.Name == region.Owner ||
-                region.AllowedGroups.Contains(plr.Group.Name) ||
-                region.AllowedIDs.Contains(plr.Account.ID))
-            {
-                hasPerm = true;
-                break;
-            }
-        }
-
-        // 3. 如果玩家有权限，允许合成
-        if (hasPerm) return Result;
-
-        // 4. 玩家没有权限，检查箱子是否在玩家范围内
-        if (!IsChestInRange(chest, plr)) return Result;
-
-        // 5. 箱子在受保护区域内、玩家无权限、且在范围内，阻止合成
-        plr.SendMessage(TextGradient($"[{PluginName}] 箱子在保护区域 [c/FF5149:{firstRegion?.Name}] 中，你无权合成！"), color);
-
-        return false;
-    }
-
-    // 获取箱子所在的所有区域
-    private List<Region> GetChest(Chest chest)
-    {
-        List<Region> regions = new List<Region>();
-
-        // 箱子占据的图格范围（箱子是2x2的）
-        Rectangle chestArea = new Rectangle(chest.x, chest.y, 2, 2);
-
-        foreach (var region in TShock.Regions.Regions)
-        {
-            if (region.Area.Intersects(chestArea))
-            {
-                regions.Add(region);
-            }
-        }
-
-        return regions;
-    }
-
-    // 检查箱子是否在玩家范围内
-    private bool IsChestInRange(Chest chest, TSPlayer plr)
-    {
-        Vector2 pos = new Vector2(chest.x * 16 + 16, chest.y * 16 + 16);
-
-        // 使用平方距离避免开方运算
-        float distanceSq = Vector2.DistanceSquared(plr.TPlayer.Center, pos);
-
-        // Terraria默认合成范围600像素（平方值：360000）
-        // 详情看Terraria.GameContent.NearbyChests.GetChestsInRangeOf方法
-        float maxDistanceSq = (Config.NoUseCheatRange * 16) * (Config.NoUseCheatRange * 16);
-
-        return distanceSq <= maxDistanceSq;
-    }
-    #endregion
-
-    #region 修复使用物品召唤事件
-    private static readonly object InvtLock = new(); // 入侵事件锁，确保同一时间只有一个入侵被触发
-    private static void StartInvasion(TSPlayer plr)
-    {
-        if (!plr.TPlayer.controlUseItem) return;
-
-        // 检查玩家选中的物品是否为入侵召唤物
-        var sel = plr.SelectedItem;
-        HashSet<int> itemType = GetEventItemType();
-
-        // 检查权限
-        if (!plr.HasPermission("tshock.npc.startinvasion") && itemType.Contains(sel.type))
-        {
-            plr.SendMessage(TextGradient("[{插件名}] 你没有权限使用召唤入侵物品[c/FF514A:{物品名}]！", plr), color);
-            plr.SendMessage(TextGradient("请通知管理给予权限:\n" +
-                                         "/group addperm default tshock.npc.startinvasion\n", plr), color);
-            return;
-        }
-
-        int Invtype = -1;
-
-        // 只处理特定的入侵物品
-        switch (sel.type)
-        {
-            case ItemID.GoblinBattleStandard: // 哥布林入侵召唤物
-                Invtype = 1;
-                break;
-            case ItemID.SnowGlobe: // 雪人军团召唤物
-                Invtype = 2;
-                break;
-            case ItemID.PirateMap: // 海盗入侵召唤物
-                Invtype = 3;
-                break;
-            case ItemID.TempleKey: // 石后神庙钥匙召唤火星暴乱
-                if (Main.hardMode && NPC.downedGolemBoss && Config.MartianEvent)
-                    Invtype = 4;
-                break;
-            default:
-                return;
-        }
-
-        // 使用锁确保同一时间只有一个入侵被触发
-        lock (InvtLock)
-        {
-            // 检查是否已有入侵在进行
-            if (Main.invasionType != 0)
-            {
-                plr.SendMessage(TextGradient($"\n[{PluginName}]\n" +
-                                             $"已有1个入侵事件[c/FF5C57:({GetInvasionName(Main.invasionType)})]进行中！\n" +
-                                             $"使用指令[c/FF5C57:结束]入侵:/worldevent invasion"), color);
-                return;
-            }
-
-            // 消耗物品
-            if (!UseEventItem(plr, itemType))
-                return;
-
-            // 根据超过200血的玩家数，计算入侵规模
-            int MaxLife200_Player = TShock.Players.Count(p => p != null && p.Active && p.TPlayer.statLifeMax >= 200);
-
-            // 设置入侵参数
-            switch (Invtype)
-            {
-                case 1: // 哥布林入侵
-                case 2: // 雪人军团入侵
-                    Main.invasionSize = 80 + 40 * MaxLife200_Player;
-                    break;
-                case 3: // 海盗入侵
-                    Main.invasionSize = 120 + 60 * MaxLife200_Player;
-                    break;
-                case 4: // 火星人入侵
-                    Main.invasionSize = 160 + 40 * MaxLife200_Player;
-                    break;
-            }
-
-            Main.invasionSizeStart = Main.invasionSize; // 设置入侵初始规模
-            Main.invasionType = Invtype; // 设置入侵类型
-
-            // 设置入侵起始位置
-            if (Invtype == 4) // 火星人特殊处理
-                Main.invasionX = Main.spawnTileX - 1;
-            else
-                Main.invasionX = (Main.rand.Next(2) == 0) ? 0 : Main.maxTilesX;
-
-            // 设置警告状态
-            Main.invasionWarn = (Invtype == 4) ? 2 : 0;
-
-            try
-            {
-                // 开始入侵
-                Main.StartInvasion(Invtype);
-
-                // 发送网络同步
-                NetMessage.SendData(MessageID.WorldData);
-                NetMessage.SendData(MessageID.InvasionProgressReport);
-
-                // 发送全局通知
-                TShock.Utils.Broadcast(TextGradient($"{plr.Name} 召唤了{GetInvasionName(Invtype)}入侵！"), color);
-            }
-            catch (Exception ex)
-            {
-                TShock.Log.ConsoleError($"召唤入侵时发生错误: {ex}");
-                plr.SendMessage("召唤入侵失败，请联系管理员！", Color.Red);
-
-                // 重置入侵状态
-                Main.invasionType = 0;
-                Main.invasionSize = 0;
-                Main.invasionDelay = 0;
             }
         }
     }

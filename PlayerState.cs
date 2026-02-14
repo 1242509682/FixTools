@@ -31,11 +31,6 @@ internal class PlayerState
         public bool rwWire { get; set; } = false;
         // 撤销修复文件路径（后进先出栈）
         public List<string> rwUndoStack = new();
-
-        // 击败boss后需要发送伤害排行
-        public bool needSend { get; set; } = false;
-        // 缓存3份伤害跟踪器,避免重复发送
-        public List<NPCDamageTracker> SentTrackers { get; set; } = new();
     }
     #endregion
 
