@@ -51,7 +51,7 @@ public partial class FixTools : TerrariaPlugin
         ServerApi.Hooks.NpcKilled.Register(this, OnNPCKilled);
         ServerApi.Hooks.DropBossBag.Register(this, OnDropBossBag);
         ServerApi.Hooks.ServerChat.Register(this, this.OnChat);
-        On.Terraria.GameContent.CraftingRequests.CanCraftFromChest += OnCanCraftFromChest;
+ //       On.Terraria.GameContent.CraftingRequests.CanCraftFromChest += OnCanCraftFromChest; // 不得不注释掉这行，不然编译后会在TShock端报错
         TShockAPI.Commands.ChatCommands.Add(new Command($"{pt}.use", PoutCmd.Pouts, pt, "pt"));
         TShockAPI.Commands.ChatCommands.Add(new Command(string.Empty, BakCmd.bakCmd, bak));
     }
