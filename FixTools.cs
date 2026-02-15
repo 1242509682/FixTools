@@ -152,6 +152,15 @@ public partial class FixTools : TerrariaPlugin
         if (Config.AutoFixWorld)
         {
             PoutCmd.ExecuteFix(TSPlayer.Server, false);
+            Console.WriteLine(string.Empty);
+        }
+
+        if (Config.AutoPerm)
+        {
+            Console.WriteLine($"[自动配权提醒]");
+            PoutCmd.ManagePerm(TSPlayer.Server, true);
+            TShock.Log.ConsoleInfo($"如果不需要可批量移除:/pout del");
+            Console.WriteLine(string.Empty);
         }
 
         if (Config.AutoAddGM && !TShock.Groups.GroupExists("GM"))
