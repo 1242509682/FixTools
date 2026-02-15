@@ -473,7 +473,7 @@ internal class Utils
 
     #region 队伍名称映射
     public static string GetTeamCName(int teamId) => TeamColorMap.TryGetValue(teamId, out var name) ? name : "全体";
-    private static readonly Dictionary<int, string> TeamColorMap = new()
+    public static readonly Dictionary<int, string> TeamColorMap = new()
     {
         { 0, "[c/5ADECE:白队]" },{ 1, "[c/F56470:红队]" },
         { 2, "[c/74E25C:绿队]" },{ 3, "[c/5A9DDE:蓝队]" },
@@ -827,6 +827,5 @@ internal class Utils
         plr.SendMessage($"已清空导入存档文件夹", color2);
     }
     #endregion
-
 
 }

@@ -93,8 +93,8 @@ internal class BakCmd
                 break;
 
             default:
-                plr.SendMessage($"申请回档: /{bak} 数字", color);
-                plr.SendMessage($"投票回档: /{bak} y | n ", color);
+                plr.SendMessage($"申请自己回档: /{bak} 数字", color);
+                plr.SendMessage($"投票他人回档: /{bak} y | n ", color);
                 break;
         }
     }
@@ -125,7 +125,7 @@ internal class BakCmd
         }
         else
         {
-            sb.AppendLine($"\n申请回档: /{bak} 备份索引");
+            sb.AppendLine($"\n申请自己回档: /{bak} 备份索引");
         }
 
         if (plr.HasPermission($"{pt}.use"))
@@ -271,7 +271,7 @@ internal class BakCmd
     private static void SendResult(TSPlayer plr, bool yes)
     {
         var result = yes ? "批准" : "拒绝";
-        var mess = $"[{PluginName}] {plr.Name} {result} {curName} 的申请回档";
+        var mess = $"{plr.Name} {result} {curName} 的申请回档";
 
         if (plr == TSPlayer.Server)
             plr.SendMessage(mess, color);

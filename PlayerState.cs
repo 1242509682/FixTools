@@ -31,6 +31,13 @@ internal class PlayerState
         public bool rwWire { get; set; } = false;
         // 撤销修复文件路径（后进先出栈）
         public List<string> rwUndoStack = new();
+
+        // 玩家队伍
+        public int Team { get; set; } = -1; // 缓存的队伍ID
+        public bool Lock { get; set; } = false; // 是否被锁定切换队伍（阻止切换）
+        public DateTime? SwitchTime { get; set; } = null; // 记录切换队伍时间
+        public Point? NeedTp { get; set; } = null; // 记录是否需要传送
+        public DateTime? JoinTime { get; set; } = null; // 记录可以传送的时间点
     }
     #endregion
 

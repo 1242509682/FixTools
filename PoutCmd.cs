@@ -1,5 +1,5 @@
-﻿using System.IO.Compression;
-using System.Text;
+﻿using System.Text;
+using DeathEvent;
 using Terraria;
 using Terraria.ID;
 using TerrariaApi.Server;
@@ -26,6 +26,8 @@ internal class PoutCmd
             mess.AppendLine($"/{pt} save ——自动备份菜单");
             mess.AppendLine($"/{pt} vote ——投票回档开关");
             mess.AppendLine($"/{bak} ——投票回档功能");
+            mess.AppendLine($"/tv ——队伍投票功能");
+            mess.AppendLine($"/{pt} team ——队伍模式菜单");
             mess.AppendLine($"/{pt} rw ——修复局部图格");
             mess.AppendLine($"/{pt} vs ——设置导出版本号");
             mess.AppendLine($"/{pt} join ——跨版本进服开关");
@@ -54,6 +56,8 @@ internal class PoutCmd
                             $"/{pt} save ——自动备份菜单\n" +
                             $"/{pt} vote ——投票回档开关\n" +
                             $"/{bak} ——投票回档功能\n" +
+                            $"/{pt} team ——队伍模式菜单\n" +
+                            $"/tv ——队伍投票功能\n" +
                             $"/{pt} rw ——修复局部图格\n" +
                             $"/{pt} vs ——设置导出版本号\n" +
                             $"/{pt} join ——跨版本进服开关\n" +
@@ -86,7 +90,7 @@ internal class PoutCmd
     #endregion
 
     #region 统一布尔配置项切换方法
-    private static void SetBool(string desc, TSPlayer plr, Func<bool> getVal, Action<bool> setVal)
+    public static void SetBool(string desc, TSPlayer plr, Func<bool> getVal, Action<bool> setVal)
     {
         bool cur = getVal();
         bool newVal = !cur;
@@ -98,7 +102,7 @@ internal class PoutCmd
     #endregion
 
     #region 统一设置数值配置方法
-    private static void SetNum(string desc, TSPlayer plr, Action<int> setVal, string num, string unit = "")
+    public static void SetNum(string desc, TSPlayer plr, Action<int> setVal, string num, string unit = "")
     {
         if (!int.TryParse(num, out int val))
         {
@@ -111,7 +115,7 @@ internal class PoutCmd
         plr.SendMessage($"{desc}已设置为 {val}{unit}", color);
     }
 
-    private static void SetFloat(string desc, TSPlayer plr, Action<float> setVal, string num, string unit = "")
+    public static void SetFloat(string desc, TSPlayer plr, Action<float> setVal, string num, string unit = "")
     {
         if (!float.TryParse(num, out float val))
         {
@@ -198,6 +202,12 @@ internal class PoutCmd
                 case "bag":
                 case "宝藏袋":
                     SwitchTPBag(args, plr);
+                    break;
+
+                case "tm":
+                case "team":
+                case "队伍":
+                    TeamData.SwitchTeam(args, plr);
                     break;
 
                 case "修复区域箱":

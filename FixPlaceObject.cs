@@ -8,6 +8,7 @@ namespace FixTools;
 internal class FixPlaceObject
 {
     #region 修复天塔柱BUG
+    //（放置BUG流程为：4个金属锭、1个金箱、挖掉底下2个金属锭、底部放工作台、挖掉金箱、放置天塔柱）
     public static void FixPlace(GetDataHandlers.PlaceObjectEventArgs e)
     {
         // 检查下方一格

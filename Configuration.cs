@@ -7,66 +7,80 @@ namespace FixTools;
 
 internal class Configuration
 {
-    [JsonProperty("自建GM权限组", Order = -100)]
+    [JsonProperty("自建GM权限组", Order = -200)]
     public bool AutoAddGM { get; set; } = true;
-    [JsonProperty("启用自动注册", Order = -99)]
+    [JsonProperty("启用自动注册", Order = -199)]
     public bool AutoRegister { get; set; } = true;
-    [JsonProperty("注册默认密码", Order = -98)]
+    [JsonProperty("注册默认密码", Order = -198)]
     public string DefPass { get; set; } = "123456";
 
-    [JsonProperty("自动备份存档", Order = -81)]
+    [JsonProperty("自动备份存档", Order = -170)]
     public bool AutoSavePlayer { get; set; } = true;
-    [JsonProperty("备份地图快照", Order = -80)]
+    [JsonProperty("备份地图快照", Order = -169)]
     public bool SaveSnapshot { get; set; } = true;
-    [JsonProperty("自动备份地图", Order = -79)]
+    [JsonProperty("自动备份地图", Order = -168)]
     public bool AutoSaveWorld { get; set; } = false;
-    [JsonProperty("自动备份数据库", Order = -79)]
+    [JsonProperty("自动备份数据库", Order = -167)]
     public bool AutoSaveSqlite { get; set; } = true;
-    [JsonProperty("备份存档分钟数", Order = -78)]
+    [JsonProperty("备份存档分钟数", Order = -166)]
     public int AutoSaveInterval { get; set; } = 30;
-    [JsonProperty("自动清理备份", Order = -77)]
+    [JsonProperty("自动清理备份", Order = -165)]
     public bool AutoClean { get; set; } = true;
-    [JsonProperty("保留备份数量", Order = -76)]
+    [JsonProperty("保留备份数量", Order = -164)]
     public int MaxBackup { get; set; } = 30;
-    [JsonProperty("备份显示消息", Order = -75)]
+    [JsonProperty("备份显示消息", Order = -163)]
     public bool ShowAutoSaveMsg { get; set; } = true;
 
-    [JsonProperty("投票回档开关", Order = -74)]
+    [JsonProperty("投票回档开关", Order = -100)]
     public bool ApplyVote { get; set; } = true;
-    [JsonProperty("投票过期时间", Order = -73)]
+    [JsonProperty("投票过期时间", Order = -99)]
     public int ApplyTime { get; set; } = 30;
-    [JsonProperty("投票通过概率", Order = -72)]
+    [JsonProperty("投票通过概率", Order = -98)]
     public float VotePassRate { get; set; } = 0.5f;
-    [JsonProperty("投票最少人数", Order = -71)]
+    [JsonProperty("投票参与人数", Order = -97)]
     public int MinVotePlayers { get; set; } = 2;
 
-    [JsonProperty("导出存档的版本号", Order = -70)]
+    [JsonProperty("导出存档的版本号", Order = -96)]
     public int GameVersion { get; set; } = 317;
-    [JsonProperty("版本号对照参考表", Order = -69)]
+    [JsonProperty("版本号对照参考表", Order = -95)]
     public HashSet<string> Example { get; set; } = [];
 
-    [JsonProperty("跨版本进服", Order = -61)]
+    [JsonProperty("跨版本进服", Order = -94)]
     public bool NoVisualLimit { get; set; } = true;
-    [JsonProperty("宝藏袋传送", Order = -60)]
+    [JsonProperty("宝藏袋传送", Order = -93)]
     public bool TpBagEnabled { get; set; } = true;
-    [JsonProperty("显示伤害排行", Order = -59)]
+    [JsonProperty("显示伤害排行", Order = -92)]
     public bool NPCDamageTracker { get; set; } = true;
-    [JsonProperty("宝藏袋传送关键词", Order = -58)]
+    [JsonProperty("宝藏袋传送关键词", Order = -91)]
     public List<string> AllowTpBagText { get; set; } = new();
-    [JsonProperty("自动修复地图缺失", Order = -57)]
+
+    [JsonProperty("自动修复地图缺失", Order = -90)]
     public bool AutoFixWorld { get; set; } = true;
-    [JsonProperty("修复物品召唤入侵事件", Order = -56)]
+    [JsonProperty("修复物品召唤入侵事件", Order = -89)]
     public bool FixStartInvasion { get; set; } = true;
-    [JsonProperty("修复天塔柱刷物品BUG", Order = -55)]
+    [JsonProperty("修复天塔柱刷物品BUG", Order = -88)]
     public bool FixPlaceObject { get; set; } = true;
-    [JsonProperty("石后神庙钥匙召唤火星暴乱", Order = -54)]
+    [JsonProperty("石后神庙钥匙召唤火星暴乱", Order = -87)]
     public bool MartianEvent { get; set; } = true;
-    [JsonProperty("禁用区域箱子材料", Order = -53)]
+    [JsonProperty("禁用区域箱子材料", Order = -86)]
     public bool NoUseRgionCheat { get; set; } = true;
-    [JsonProperty("禁用区域箱子范围", Order = -52)]
+    [JsonProperty("禁用区域箱子范围", Order = -85)]
     public float NoUseCheatRange { get; set; } = 40;
-    [JsonProperty("允许区域合成组", Order = -51)]
+    [JsonProperty("允许区域合成组", Order = -84)]
     public List<string> AllowRegionGroup { get; set; } = new();
+
+    [JsonProperty("队伍模式开关", Order = -50)]
+    public bool TeamMode { get; set; } = true;
+    [JsonProperty("队伍出生点", Order = -49)]
+    public bool TeamSpawn { get; set; } = true;
+    [JsonProperty("队伍投票时间", Order = -48)]
+    public int TeamVoteTime { get; set; } = 30;
+    [JsonProperty("队伍切换冷却", Order = -47)]
+    public int SwitchTeamCD { get; set; } = 30;
+    [JsonProperty("队员死亡物品惩罚", Order = -46)]
+    public bool TeamItemPun { get; set; } = false;
+    [JsonProperty("队员死亡集体团灭", Order = -45)]
+    public bool TeamDeathPun { get; set; } = false;
 
     [JsonProperty("重置清理数据表", Order = 1)]
     public HashSet<string> ClearSql { get; set; } = [];
@@ -108,7 +122,6 @@ internal class Configuration
     [JsonProperty("批量改权限", Order = 71)]
     public Dictionary<string, HashSet<string>> Permission = [];
 
-
     #region 预设参数方法
     public void SetDefault()
     {
@@ -146,7 +159,8 @@ internal class Configuration
             "[c/FFFFFF:2.]智能进服公告、跨版本进服、修复地图区块缺失、boss伤害排行",
             "[c/FFFFFF:3.]批量改权限、导出权限表、复制文件、宝藏袋传送、修复局部图格",
             "[c/FFFFFF:4.]自动注册、自动建GM组、自动配权、进度锁、重置服务器",
-            "[c/FFFFFF:5.]修复召唤入侵事件、修复天塔柱刷物品BUG、投票回档",
+            "[c/FFFFFF:5.]修召唤入侵事件、修天塔柱刷物品BUG、投票回档",
+            "[c/FFFFFF:6.]进服恢复队伍与出生点、切换队伍投票、队伍出生点修改投票",
             "---------",
             "发送[c/FF6962:任意消息]显示下条信息\n",
         ];

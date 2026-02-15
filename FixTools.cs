@@ -1,4 +1,6 @@
-﻿using Terraria;
+﻿using DeathEvent;
+using Microsoft.Xna.Framework;
+using Terraria;
 using Terraria.ID;
 using Terraria.Net;
 using TerrariaApi.Server;
@@ -16,7 +18,7 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 2, 15);
+    public override Version Version => new(2026, 2, 15, 2);
     public override string Description => "本插件仅TShock测试版期间维护,指令/pout";
     #endregion
 
@@ -37,8 +39,11 @@ public partial class FixTools : TerrariaPlugin
         GeneralHooks.ReloadEvent += ReloadConfig;
         ServerApi.Hooks.GamePostInitialize.Register(this, this.GamePost, 9999);
         ServerApi.Hooks.ServerJoin.Register(this, OnServerJoin);
-        ServerApi.Hooks.ServerLeave.Register(this, this.OnServerLeave);
+        GetDataHandlers.PlayerSpawn.Register(TeamData.OnPlayerSpawn);
         GetDataHandlers.PlayerUpdate.Register(this.OnPlayerUpdate);
+        GetDataHandlers.KillMe.Register(TeamData.OnKillMe);
+        GetDataHandlers.PlayerTeam.Register(TeamData.OnPlayerTeam);
+        ServerApi.Hooks.ServerLeave.Register(this, this.OnServerLeave);
         GetDataHandlers.PlaceObject.Register(this.OnPlaceObject);
         GetDataHandlers.MassWireOperation.Register(this.OnWire);
         ServerApi.Hooks.NetGetData.Register(this, OnNetGetData);
@@ -52,6 +57,7 @@ public partial class FixTools : TerrariaPlugin
         On.Terraria.GameContent.BossDamageTracker.OnBossKilled += DamageTrackers.OnBossKilled;
         TShockAPI.Commands.ChatCommands.Add(new Command($"{pt}.use", PoutCmd.Pouts, pt, "pt"));
         TShockAPI.Commands.ChatCommands.Add(new Command(string.Empty, BakCmd.bakCmd, bak));
+        TShockAPI.Commands.ChatCommands.Add(new Command(string.Empty, TeamData.tvCmd, "tv"));
     }
 
     protected override void Dispose(bool disposing)
@@ -61,8 +67,11 @@ public partial class FixTools : TerrariaPlugin
             GeneralHooks.ReloadEvent -= ReloadConfig;
             ServerApi.Hooks.GamePostInitialize.Deregister(this, this.GamePost);
             ServerApi.Hooks.ServerJoin.Deregister(this, OnServerJoin);
-            ServerApi.Hooks.ServerLeave.Deregister(this, this.OnServerLeave);
+            GetDataHandlers.PlayerSpawn.UnRegister(TeamData.OnPlayerSpawn);
             GetDataHandlers.PlayerUpdate.UnRegister(this.OnPlayerUpdate);
+            GetDataHandlers.KillMe.UnRegister(TeamData.OnKillMe);
+            GetDataHandlers.PlayerTeam.UnRegister(TeamData.OnPlayerTeam);
+            ServerApi.Hooks.ServerLeave.Deregister(this, this.OnServerLeave);
             GetDataHandlers.PlaceObject.UnRegister(this.OnPlaceObject);
             GetDataHandlers.MassWireOperation.UnRegister(this.OnWire);
             ServerApi.Hooks.NetGetData.Deregister(this, OnNetGetData);
@@ -76,7 +85,8 @@ public partial class FixTools : TerrariaPlugin
             On.Terraria.GameContent.BossDamageTracker.OnBossKilled -= DamageTrackers.OnBossKilled;
             TShockAPI.Commands.ChatCommands.RemoveAll(x =>
             x.CommandDelegate == PoutCmd.Pouts ||
-            x.CommandDelegate == BakCmd.bakCmd);
+            x.CommandDelegate == BakCmd.bakCmd ||
+            x.CommandDelegate == TeamData.tvCmd);
         }
         base.Dispose(disposing);
     }
@@ -127,6 +137,7 @@ public partial class FixTools : TerrariaPlugin
         TShock.Log.ConsoleInfo($"3.批量改权限、导出权限表、复制文件、宝藏袋传送、修复局部图格");
         TShock.Log.ConsoleInfo($"4.自动注册、自动建GM组、自动配权、进度锁、重置服务器");
         TShock.Log.ConsoleInfo($"5.修复召唤入侵事件、修复天塔柱刷物品BUG、投票回档");
+        TShock.Log.ConsoleInfo($"6.进服恢复队伍与出生点、投票切换队伍、投票修改队伍出生点");
         TShock.Log.ConsoleInfo($"指令/{pt} 权限:{pt}.use");
         TShock.Log.ConsoleInfo($"配置文件路径:{ConfigPath}");
         Console.WriteLine(string.Empty);
@@ -212,7 +223,6 @@ public partial class FixTools : TerrariaPlugin
         else
         {
             data.Motd = 1;
-
         }
     }
     #endregion
@@ -235,10 +245,13 @@ public partial class FixTools : TerrariaPlugin
             data.rwSign = string.Empty;
         }
 
+        if (Config.TeamMode)
+            TeamData.ClearApply(plr.Name);
+
         // 如果离开的玩家是申请人，取消申请
         if (BakCmd.curName == plr.Name)
         {
-            TSPlayer.All.SendMessage(TextGradient($"[{PluginName}] {plr.Name} 离开,申请已取消"), color);
+            TSPlayer.All.SendMessage(TextGradient($"{plr.Name} 已离开,他的个人回档申请已取消"), color);
             BakCmd.ClearApply();
         }
     }
@@ -253,6 +266,12 @@ public partial class FixTools : TerrariaPlugin
             return;
 
         var data = GetData(plr.Name);
+
+        // 如果开启队伍申请模式,刚进服就恢复队伍回到此队出生点
+        if (Config.TeamMode)
+        {
+            TeamData.IsJoinBackTeam(plr, data);
+        }
 
         // 进服公告
         if (Config.MotdEnabled && data.Motd == 1)
@@ -296,10 +315,13 @@ public partial class FixTools : TerrariaPlugin
             FixStartInvasion.StartInvasion(plr);
         }
     }
+
+    
     #endregion
 
     #region 游戏更新事件，自动备份存档
     private static long frame = 0;  // 自动备份计时器
+    private static long Teamframe = 0;  // 队伍投票计时器
     private static long checkFrame = 0; // 申请检查计时器
     public static bool hasApply = false; // 是否有申请存在
     private void OnGameUpdate(EventArgs args)
@@ -312,6 +334,22 @@ public partial class FixTools : TerrariaPlugin
             {
                 WritePlayer.ExportAll(TSPlayer.Server, WritePlayer.AutoSaveDir);
                 frame = 0;
+            }
+        }
+
+        // 队伍投票时间检查
+        if (Config.TeamMode)
+        {
+            // 当有人刚进服或者回到出生点时
+            // 每帧检查是否需要传送会队伍出生点
+            if (TeamData.needTP.Count > 0)
+                TeamData.BackTeamSpawn();
+
+            // 当有投票时，每秒检查投票是否过期
+            if (TeamData.VoteData.Count > 0 && ++Teamframe >= 60)
+            {
+                TeamData.CheckTimeout();
+                Teamframe = 0;
             }
         }
 
@@ -440,7 +478,7 @@ public partial class FixTools : TerrariaPlugin
     }
     #endregion
 
-    #region 修复天塔柱刷物品BUG（放置BUG流程为：4个金属锭、1个金箱、挖掉底下2个金属锭、底部放工作台、挖掉金箱、放置天塔柱）
+    #region 修复天塔柱刷物品BUG
     private void OnPlaceObject(object? sender, GetDataHandlers.PlaceObjectEventArgs e)
     {
         var plr = e.Player;
