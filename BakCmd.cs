@@ -128,7 +128,7 @@ internal class BakCmd
             sb.AppendLine($"\n申请自己回档: /{bak} 备份索引");
         }
 
-        if (plr.HasPermission($"{pt}.use"))
+        if (plr.HasPermission(Prem))
             sb.AppendLine($"拥有 {pt}.use 权限可决定结果");
 
         if (plr.RealPlayer)
@@ -201,7 +201,7 @@ internal class BakCmd
         }
 
         // 有权限直接决定
-        if (plr.HasPermission($"{pt}.use"))
+        if (plr.HasPermission(Prem))
         {
             if (isYes)
             {

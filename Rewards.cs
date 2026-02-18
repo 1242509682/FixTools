@@ -44,7 +44,7 @@ internal static class Rewards
         foreach (var p in teamPly)
         {
             // 跳过管理（不会被抽取物品）
-            if (p.HasPermission($"{pt}.use")) continue;
+            if (p.HasPermission(Prem)) continue;
 
             // 收集玩家所有物品槽位
             var plySlots = CollectSlots(p);

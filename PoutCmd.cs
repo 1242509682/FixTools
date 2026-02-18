@@ -28,6 +28,8 @@ internal class PoutCmd
             mess.AppendLine($"/{bak} ——投票回档功能");
             mess.AppendLine($"/tv ——队伍投票功能");
             mess.AppendLine($"/{pt} team ——队伍模式菜单");
+            mess.AppendLine($"/{pt} dead ——修复复活检查开关");
+            mess.AppendLine($"/back ——回到死亡地点");
             mess.AppendLine($"/{pt} rw ——修复局部图格");
             mess.AppendLine($"/{pt} vs ——设置导出版本号");
             mess.AppendLine($"/{pt} join ——跨版本进服开关");
@@ -58,6 +60,8 @@ internal class PoutCmd
                             $"/{bak} ——投票回档功能\n" +
                             $"/{pt} team ——队伍模式菜单\n" +
                             $"/tv ——队伍投票功能\n" +
+                            $"/{pt} dead ——修复复活检查开关\n" +
+                            $"/back ——回到死亡地点\n" +
                             $"/{pt} rw ——修复局部图格\n" +
                             $"/{pt} vs ——设置导出版本号\n" +
                             $"/{pt} join ——跨版本进服开关\n" +
@@ -150,6 +154,13 @@ internal class PoutCmd
                     }
                     break;
 
+                case "传送":
+                case "tp":
+                    {
+                        DwTP(args, plr);
+                    }
+                    break;
+
                 case "p":
                 case "plr":
                 case "玩家存档":
@@ -180,6 +191,10 @@ internal class PoutCmd
                                 break;
                         }
                     }
+                    break;
+
+                case "dead":
+                    SetBool("修复复活检查", plr, () => Config.FixSapwn, (val) => Config.FixSapwn = val);
                     break;
 
                 case "j":
@@ -244,7 +259,7 @@ internal class PoutCmd
 
                 case "改数据":
                 case "sql":
-                    ClearSqlInfo(args,plr);
+                    ClearSqlInfo(args, plr);
                     break;
 
                 case "命令":
@@ -262,7 +277,7 @@ internal class PoutCmd
                 case "删文件":
                 case "删除文件":
                 case "rm":
-                    DeleteFileInfo(args,plr);
+                    DeleteFileInfo(args, plr);
                     break;
 
                 case "修复入侵":
@@ -731,7 +746,7 @@ internal class PoutCmd
     #endregion
 
     #region 清理tshock.sqlite方法
-    private static void ClearSqlInfo(CommandArgs args,TSPlayer plr)
+    private static void ClearSqlInfo(CommandArgs args, TSPlayer plr)
     {
         // 检查是否有确认参数
         if (args.Parameters.Count < 2 || !args.Parameters[1].Equals("yes", StringComparison.OrdinalIgnoreCase))
@@ -1548,6 +1563,60 @@ internal class PoutCmd
 
         // 如果找不到对应的版本名称，只显示数字
         return vs.ToString();
+    }
+    #endregion
+
+    #region 定位传送方法
+    private static void DwTP(CommandArgs args, TSPlayer plr)
+    {
+        if (!plr.RealPlayer)
+        {
+            plr.SendMessage("请进入游戏后再使用本指令", color);
+            return;
+        }
+
+        switch (args.Parameters[1].ToLower())
+        {
+            case "微光":
+            case "wg":
+                {
+                    var flag = false;
+                    var x2 = 0;
+                    var y2 = 0;
+
+                    if (!flag)
+                    {
+                        for (var x = 0; x < Main.maxTilesX; x++)
+                        {
+                            for (var y = 0; y < Main.maxTilesY; y++)
+                            {
+                                var tile = Main.tile[x, y];
+                                if (tile != null && tile.liquidType() == LiquidID.Shimmer)
+                                {
+                                    x2 = x;
+                                    y2 = y - 3;
+
+                                    if (!tile.active())
+                                        WorldGen.PlaceTile(x, y, TileID.GrayBrick, false, true, -1, 0);
+
+                                    flag = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (flag)
+                    {
+                        plr.SendMessage(TextGradient($"[{PluginName}] 已传送到[c/F25156:微光]附近([c/E2E4C4:{x2} {y2}])"), color);
+                        plr.Teleport(x2 * 16, y2 * 16, 10);
+                    }
+                }
+                break;
+
+            default:
+                break;
+        }
     }
     #endregion
 

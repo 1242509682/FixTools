@@ -6,6 +6,7 @@ using static FixTools.FixTools;
 using static FixTools.PlayerState;
 using static FixTools.Utils;
 using static FixTools.PoutCmd;
+using FixTools;
 
 namespace DeathEvent;
 
@@ -118,15 +119,8 @@ internal static class TeamData
     #endregion
 
     #region 玩家生成事件 恢复玩家队伍
-    public static void OnPlayerSpawn(object? sender, GetDataHandlers.SpawnEventArgs e)
+    public static void TeamSpawn(GetDataHandlers.SpawnEventArgs e, TSPlayer plr, MyData data)
     {
-        var plr = e.Player;
-        if (plr is null || !Config.TeamMode)
-            return;
-
-        var data = GetData(plr.Name);
-        if (data is null) return;
-
         // 如果是刚进世界
         if (e.SpawnContext == Terraria.PlayerSpawnContext.SpawningIntoWorld)
         {
@@ -208,15 +202,8 @@ internal static class TeamData
     #endregion
 
     #region 玩家死亡事件,队伍物品惩罚
-    public static void OnKillMe(object? sender, GetDataHandlers.KillMeEventArgs e)
+    public static void TeamKillMe(GetDataHandlers.KillMeEventArgs e, TSPlayer plr, MyData data)
     {
-        var plr = TShock.Players[e.PlayerId];
-        if (plr is null || !plr.RealPlayer ||
-            !Config.TeamMode || !Config.TeamItemPun) return;
-
-        var data = GetData(plr.Name);
-        if (data is null) return;
-
         int team = plr.Team;
         if (team <= 0) return;
         var teamName = GetTeamCName(plr.Team);
@@ -239,7 +226,7 @@ internal static class TeamData
 
                 // 只在 队员死亡集体团灭 开启时杀死同队伍玩家
                 // 排除自己与管理员
-                if (Config.TeamDeathPun && p != plr && !p.Dead && !p.HasPermission($"{pt}.use"))
+                if (Config.TeamDeathPun && p != plr && !p.Dead && !p.HasPermission(Prem))
                 {
                     p.KillPlayer();
                     TSPlayer.All.SendData(PacketTypes.DeadPlayer, "", p.Index);
@@ -309,7 +296,7 @@ internal static class TeamData
     #region 检查切换队伍冷却
     private static bool CheckSwitchCD(TSPlayer plr, MyData data, int newTeam)
     {
-        if (plr.HasPermission($"{pt}.use") ||
+        if (plr.HasPermission(Prem) ||
             !data.SwitchTime.HasValue)
             return false;
 
@@ -517,7 +504,7 @@ internal static class TeamData
     private static bool TeamApply(GetDataHandlers.PlayerTeamEventArgs e, TSPlayer plr, int oldTeam, int newTeam)
     {
         // 检查玩家是否拥有直接切换权限
-        if (plr.HasPermission($"{pt}.use")) return false; // 直接允许切换队伍
+        if (plr.HasPermission(Prem)) return false; // 直接允许切换队伍
 
         // newTeam > 0 表示不是无队伍
         if (Config.TeamMode && newTeam > 0)
@@ -644,7 +631,7 @@ internal static class TeamData
             mess.Append("/tv s - 申请修改本队出生点\n");
 
             // 管理专用指令
-            if (plr.HasPermission($"{pt}.use"))
+            if (plr.HasPermission(Prem))
             {
                 mess.Append("/tv fp - 分配玩家队伍\n");
             }
@@ -797,7 +784,7 @@ internal static class TeamData
     #region 强制分配队伍方法
     private static void ForceTeam(TSPlayer plr, CommandArgs args)
     {
-        if (!plr.HasPermission($"{pt}.use")) return;
+        if (!plr.HasPermission(Prem)) return;
 
         if (args.Parameters.Count < 3)
         {
@@ -929,7 +916,7 @@ internal static class TeamData
         }
 
         // 有管理权，直接设置，无需投票
-        if (plr.HasPermission($"{pt}.use"))
+        if (plr.HasPermission(Prem))
         {
             SpawnPoint[team] = new Point((int)plr.X / 16, (int)(plr.Y / 16));
             TSPlayer.All.SendMessage(TextGradient($"管理 {plr.Name} 已将 {(int)plr.X / 16},{(int)plr.Y / 16} 设为" +
@@ -1059,7 +1046,7 @@ internal static class TeamData
         var state3 = $"{Config.SwitchTeamCD}";
         var state4 = Config.TeamItemPun ? "开" : "关";
         var state5 = Config.TeamDeathPun ? "开" : "关";
-        var state6 = Config.TeamSpawn ? "开" : "关"; 
+        var state6 = Config.TeamSpawn ? "开" : "关";
 
         var mess = new StringBuilder();
         mess.AppendLine($"\n[c/AD89D5:队伍模式设置]");

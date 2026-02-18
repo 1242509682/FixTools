@@ -757,7 +757,7 @@ internal class Utils
 
         using (var zip = ZipFile.OpenRead(zipPath))
         {
-            // 查找匹配的.plr文件
+            // 查找匹配的.plr文件（忽略大小写）
             var plrEntry = zip.Entries.FirstOrDefault(e =>
                 e.Name.Equals($"{name}.plr", StringComparison.OrdinalIgnoreCase));
 
@@ -772,10 +772,10 @@ internal class Utils
             plrEntry.ExtractToFile(destPath, true);
 
             plr.SendMessage($"已提取: {plrEntry.Name}", color2);
-        }
 
-        // 导入存档
-        ReaderPlayer.ReadPlayer(plr, $"{ReaderPlayer.ReaderDir}/{name}.plr");
+            // 导入存档 - 使用实际解压的文件路径
+            ReaderPlayer.ReadPlayer(plr, destPath);
+        }
 
         // 清空导入文件夹
         foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderDir))
@@ -811,12 +811,14 @@ internal class Utils
                     count++;
                 }
             }
+
+            // 导入所有存档
+            ReaderPlayer.ReadPlayer(plr);
         }
 
         plr.SendMessage($"已提取 {count} 个存档文件", color2);
 
-        // 导入所有存档
-        ReaderPlayer.ReadPlayer(plr);
+
 
         // 清空导入文件夹
         foreach (var file in Directory.GetFiles(ReaderPlayer.ReaderDir))
@@ -826,6 +828,17 @@ internal class Utils
 
         plr.SendMessage($"已清空导入存档文件夹", color2);
     }
+    #endregion
+
+    #region 获取6位数随机密码
+    public static string GetRandPass()
+    {
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        var sb = new StringBuilder(6);
+        for (int i = 0; i < 6; i++)
+            sb.Append(chars[rand.Next(chars.Length)]);
+        return sb.ToString();
+    } 
     #endregion
 
 }

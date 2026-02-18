@@ -1,5 +1,4 @@
 ﻿using DeathEvent;
-using Microsoft.Xna.Framework;
 using Terraria;
 using Terraria.ID;
 using Terraria.Net;
@@ -18,13 +17,14 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 2, 15, 2);
+    public override Version Version => new(2026, 2, 19);
     public override string Description => "本插件仅TShock测试版期间维护,指令/pout";
     #endregion
 
     #region 静态变量
     public static string PluginName => "145修复小公举"; // 插件名称
     public static string pt => "pout"; // 主指令名称
+    public static string Prem => $"{pt}.use"; // 管理权限
     public static string bak => "bak"; // 投票指令名
     public static string TShockVS => "1770f2d"; // 适配版本号
     public static readonly string MainPath = Path.Combine(TShock.SavePath, PluginName); // 主文件夹路径
@@ -39,9 +39,9 @@ public partial class FixTools : TerrariaPlugin
         GeneralHooks.ReloadEvent += ReloadConfig;
         ServerApi.Hooks.GamePostInitialize.Register(this, this.GamePost, 9999);
         ServerApi.Hooks.ServerJoin.Register(this, OnServerJoin);
-        GetDataHandlers.PlayerSpawn.Register(TeamData.OnPlayerSpawn);
+        GetDataHandlers.PlayerSpawn.Register(this.OnPlayerSpawn);
         GetDataHandlers.PlayerUpdate.Register(this.OnPlayerUpdate);
-        GetDataHandlers.KillMe.Register(TeamData.OnKillMe);
+        GetDataHandlers.KillMe.Register(OnKillMe);
         GetDataHandlers.PlayerTeam.Register(TeamData.OnPlayerTeam);
         ServerApi.Hooks.ServerLeave.Register(this, this.OnServerLeave);
         GetDataHandlers.PlaceObject.Register(this.OnPlaceObject);
@@ -55,9 +55,11 @@ public partial class FixTools : TerrariaPlugin
         ServerApi.Hooks.ServerChat.Register(this, this.OnChat);
         On.Terraria.GameContent.CraftingRequests.CanCraftFromChest += CanCraft.OnCanCraftFromChest;
         On.Terraria.GameContent.BossDamageTracker.OnBossKilled += DamageTrackers.OnBossKilled;
-        TShockAPI.Commands.ChatCommands.Add(new Command($"{pt}.use", PoutCmd.Pouts, pt, "pt"));
+        // On.Terraria.WorldItem.GetShimmered += WorldItem_GetShimmered;
+        TShockAPI.Commands.ChatCommands.Add(new Command(Prem, PoutCmd.Pouts, pt, "pt"));
         TShockAPI.Commands.ChatCommands.Add(new Command(string.Empty, BakCmd.bakCmd, bak));
         TShockAPI.Commands.ChatCommands.Add(new Command(string.Empty, TeamData.tvCmd, "tv"));
+        TShockAPI.Commands.ChatCommands.Add(new Command(string.Empty, DeadLimit.Back, "back"));
     }
 
     protected override void Dispose(bool disposing)
@@ -67,9 +69,9 @@ public partial class FixTools : TerrariaPlugin
             GeneralHooks.ReloadEvent -= ReloadConfig;
             ServerApi.Hooks.GamePostInitialize.Deregister(this, this.GamePost);
             ServerApi.Hooks.ServerJoin.Deregister(this, OnServerJoin);
-            GetDataHandlers.PlayerSpawn.UnRegister(TeamData.OnPlayerSpawn);
+            GetDataHandlers.PlayerSpawn.UnRegister(this.OnPlayerSpawn);
             GetDataHandlers.PlayerUpdate.UnRegister(this.OnPlayerUpdate);
-            GetDataHandlers.KillMe.UnRegister(TeamData.OnKillMe);
+            GetDataHandlers.KillMe.UnRegister(OnKillMe);
             GetDataHandlers.PlayerTeam.UnRegister(TeamData.OnPlayerTeam);
             ServerApi.Hooks.ServerLeave.Deregister(this, this.OnServerLeave);
             GetDataHandlers.PlaceObject.UnRegister(this.OnPlaceObject);
@@ -83,9 +85,11 @@ public partial class FixTools : TerrariaPlugin
             ServerApi.Hooks.ServerChat.Deregister(this, this.OnChat);
             On.Terraria.GameContent.CraftingRequests.CanCraftFromChest -= CanCraft.OnCanCraftFromChest;
             On.Terraria.GameContent.BossDamageTracker.OnBossKilled -= DamageTrackers.OnBossKilled;
+            // On.Terraria.WorldItem.GetShimmered -= WorldItem_GetShimmered;
             TShockAPI.Commands.ChatCommands.RemoveAll(x =>
             x.CommandDelegate == PoutCmd.Pouts ||
             x.CommandDelegate == BakCmd.bakCmd ||
+            x.CommandDelegate == DeadLimit.Back ||
             x.CommandDelegate == TeamData.tvCmd);
         }
         base.Dispose(disposing);
@@ -197,41 +201,53 @@ public partial class FixTools : TerrariaPlugin
     }
     #endregion
 
-    #region 加入服务器自动注册
+    #region 加入服务器事件
     private void OnServerJoin(JoinEventArgs args)
     {
-        var hasCaibot = ServerApi.Plugins.Any(p => p.Plugin.Name == "CaiBotLitePlugin");
-        if (!Config.AutoRegister || hasCaibot) return;
-
         var plr = TShock.Players[args.Who];
-        if (plr == null || plr == TSPlayer.Server) return;
+        if (plr is null) return;
 
         var user = TShock.UserAccounts.GetUserAccountByName(plr.Name);
-
         var data = GetData(plr.Name);
         if (user is null)
         {
+            // 如果有Caibot则返回
+            var hasCaibot = ServerApi.Plugins.Any(p => p.Plugin.Name == "CaiBotLitePlugin");
+            if (!Config.AutoRegister || hasCaibot) return;
+
+            // 如果开启随机密码则应用随机,否则使用默认密码
+            string RandPass = GetRandPass();
+            var pass = Config.RandPass ? RandPass : Config.DefPass;
             var group = TShock.Config.Settings.DefaultRegistrationGroupName;
-            var NewUser = new UserAccount(plr.Name, Config.DefPass, plr.UUID, group,
+            var NewUser = new UserAccount(plr.Name, pass, plr.UUID, group,
                                           DateTime.UtcNow.ToString("s"),
                                           DateTime.UtcNow.ToString("s"), "");
-
             try
             {
+                // 缓存一下随机密码，用于播报
+                data.DefPass = pass;
+
                 // 给密码上个哈希，不然玩家改不了密码
-                NewUser.CreateBCryptHash(Config.DefPass);
+                NewUser.CreateBCryptHash(pass);
                 TShock.UserAccounts.AddUserAccount(NewUser);
 
+                data.Motd = 1;
                 data.Register = true;
             }
             catch (Exception ex)
             {
-                TShock.Log.ConsoleError($"[{PluginName}] 自动注册失败 [{plr.Name}]: {ex.Message}");
+                TShock.Log.ConsoleError($"[{PluginName}] 自动注册失败 [{plr.Name}]: \n{ex.Message}");
             }
         }
         else
         {
             data.Motd = 1;
+
+            // 修复复活检查,限制死亡状态进服
+            if (Config.FixSapwn)
+            {
+                DeadLimit.LimitJoin(plr, data);
+            }
         }
     }
     #endregion
@@ -266,6 +282,22 @@ public partial class FixTools : TerrariaPlugin
     }
     #endregion
 
+    #region 玩家生成事件
+    private void OnPlayerSpawn(object? sender, GetDataHandlers.SpawnEventArgs e)
+    {
+        var plr = e.Player;
+        if (plr == null || !plr.IsLoggedIn) return;
+
+        var data = GetData(plr.Name);
+        if (data is null) return;
+
+        if (Config.TeamMode)
+        {
+            TeamData.TeamSpawn(e, plr, data);
+        }
+    }
+    #endregion
+
     #region 玩家更新事件推送进服公告+自动注册反馈+恢复存档+修复物品召唤入侵
     private void OnPlayerUpdate(object? sender, GetDataHandlers.PlayerUpdateEventArgs e)
     {
@@ -278,9 +310,7 @@ public partial class FixTools : TerrariaPlugin
 
         // 如果开启队伍申请模式,刚进服就恢复队伍回到此队出生点
         if (Config.TeamMode)
-        {
             TeamData.IsJoinBackTeam(plr, data);
-        }
 
         // 进服公告
         if (Config.MotdEnabled && data.Motd == 1)
@@ -294,12 +324,12 @@ public partial class FixTools : TerrariaPlugin
         // 注册成功提示
         if (data.Register)
         {
-            var regText = $"\n[{PluginName}] 已为您自动注册，默认密码为: {Config.DefPass}\n" +
-                            $"使用指令修改密码: /password {Config.DefPass} 新密码\n";
+            var regText = $"[{PluginName}] 已为您自动注册，默认密码为: {data.DefPass}\n" +
+                          $"使用指令修改密码: /password {data.DefPass} 新密码\n";
 
             plr.SendMessage(TextGradient(regText), color);
             TShock.Log.ConsoleInfo($"[{PluginName}]");
-            TShock.Log.ConsoleInfo($"自动为玩家 {plr.Name} 注册账号,密码为 {Config.DefPass}");
+            TShock.Log.ConsoleInfo($"自动为玩家 {plr.Name} 注册账号,密码为 {data.DefPass}");
             TShock.Log.ConsoleInfo($"帮玩家修改密码: /user password {plr.Name} 新密码");
             data.Register = false;
         }
@@ -320,15 +350,32 @@ public partial class FixTools : TerrariaPlugin
 
         // 修复玩家使用物品召唤入侵后未正确触发入侵事件的情况
         if (Config.FixStartInvasion)
-        {
             FixStartInvasion.StartInvasion(plr);
-        }
     }
-
-    
     #endregion
 
-    #region 游戏更新事件，自动备份存档
+    #region 玩家死亡事件
+    public static void OnKillMe(object? sender, GetDataHandlers.KillMeEventArgs e)
+    {
+        var plr = TShock.Players[e.PlayerId];
+        if (plr is null || !plr.RealPlayer) return;
+
+        var data = GetData(plr.Name);
+        if (data is null) return;
+
+        // 队伍模式惩罚
+        if (Config.TeamMode)
+            TeamData.TeamKillMe(e, plr, data);
+
+        // 修复复活检查
+        if (Config.FixSapwn)
+        {
+            DeadLimit.FixRespawnTimer(plr, data);
+        }
+    }
+    #endregion
+
+    #region 游戏更新事件
     private static long frame = 0;  // 自动备份计时器
     private static long Teamframe = 0;  // 队伍投票计时器
     private static long checkFrame = 0; // 申请检查计时器
@@ -344,6 +391,12 @@ public partial class FixTools : TerrariaPlugin
                 WritePlayer.ExportAll(TSPlayer.Server, WritePlayer.AutoSaveDir);
                 frame = 0;
             }
+        }
+
+        // 未满足复活时间,定时杀死玩家
+        if (Config.FixSapwn)
+        {
+            DeadLimit.DeadTimeUpdate();
         }
 
         // 队伍投票时间检查
@@ -452,36 +505,34 @@ public partial class FixTools : TerrariaPlugin
     #region 跨版本进服方法
     private void OnNetGetData(GetDataEventArgs args)
     {
-        if (args.MsgID != PacketTypes.ConnectRequest || !Config.NoVisualLimit)
+        if (args.MsgID == PacketTypes.ConnectRequest && Config.NoVisualLimit)
         {
-            return;
-        }
+            args.Handled = true;
 
-        args.Handled = true;
+            if (Main.netMode is not 2) return;
 
-        if (Main.netMode is not 2) return;
+            RemoteClient client = Netplay.Clients[args.Msg.whoAmI];
+            RemoteAddress ip = client.Socket.GetRemoteAddress();
 
-        RemoteClient client = Netplay.Clients[args.Msg.whoAmI];
-        RemoteAddress ip = client.Socket.GetRemoteAddress();
-
-        if (Main.dedServ && Netplay.IsBanned(ip))
-        {
-            // 因封禁,禁止玩家连接
-            NetMessage.TrySendData(MessageID.Kick, args.Msg.whoAmI, -1, Lang.mp[3].ToNetworkText());
-        }
-        else if (client.State == 0)
-        {
-            if (string.IsNullOrEmpty(Netplay.ServerPassword))
+            if (Main.dedServ && Netplay.IsBanned(ip))
             {
-                // 无密码服务器，直接通过
-                client.State = 1;
-                NetMessage.TrySendData(MessageID.PlayerInfo, args.Msg.whoAmI);
+                // 因封禁,禁止玩家连接
+                NetMessage.TrySendData(MessageID.Kick, args.Msg.whoAmI, -1, Lang.mp[3].ToNetworkText());
             }
-            else
+            else if (client.State == 0)
             {
-                // 需要密码验证
-                client.State = -1;
-                NetMessage.TrySendData(MessageID.RequestPassword, args.Msg.whoAmI);
+                if (string.IsNullOrEmpty(Netplay.ServerPassword))
+                {
+                    // 无密码服务器，直接通过
+                    client.State = 1;
+                    NetMessage.TrySendData(MessageID.PlayerInfo, args.Msg.whoAmI);
+                }
+                else
+                {
+                    // 需要密码验证
+                    client.State = -1;
+                    NetMessage.TrySendData(MessageID.RequestPassword, args.Msg.whoAmI);
+                }
             }
         }
     }
@@ -514,6 +565,15 @@ public partial class FixTools : TerrariaPlugin
 
         WorldTile.FixSnapshot(e, plr);
 
+    }
+    #endregion
+
+    #region [废案]无法复现:获取微光转换物品事件（用于修复微光分解物品给2份材料的同步BUG）
+    private void WorldItem_GetShimmered(On.Terraria.WorldItem.orig_GetShimmered orig, WorldItem item)
+    {
+        if (item.shimmered) return; // 已处理，避免重复执行
+        item.shimmered = true; // 立即标记，防止后续调用
+        orig(item); // 执行原版分解逻辑
     }
     #endregion
 

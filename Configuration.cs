@@ -7,12 +7,20 @@ namespace FixTools;
 
 internal class Configuration
 {
-    [JsonProperty("自建GM权限组", Order = -200)]
+    [JsonProperty("自建GM权限组", Order = -201)]
     public bool AutoAddGM { get; set; } = true;
-    [JsonProperty("启用自动注册", Order = -199)]
+    [JsonProperty("启用自动注册", Order = -200)]
     public bool AutoRegister { get; set; } = true;
+    [JsonProperty("随机默认密码", Order = -199)]
+    public bool RandPass { get; set; } = true;
     [JsonProperty("注册默认密码", Order = -198)]
     public string DefPass { get; set; } = "123456";
+    [JsonProperty("修复复活检查", Order = -197)]
+    public bool FixSapwn { get; set; } = true;
+    [JsonProperty("死亡出服禁止进服", Order = -196)]
+    public bool DeathLimitForJoin { get; set; } = false;
+    [JsonProperty("回到死亡地点", Order = -195)]
+    public bool Back { get; set; } = true;
 
     [JsonProperty("自动备份存档", Order = -170)]
     public bool AutoSavePlayer { get; set; } = true;
@@ -141,7 +149,7 @@ internal class Configuration
         [
             "\n欢迎 拿着{武器类型}{物品图标}的{玩家名} 来到 {服务器名}",
             "在线玩家 [c/FFFFFF:({在线人数}/{服务器上限})]: {在线玩家}",
-            $"指令:/{pt} 权限:{pt}.use",
+            $"指令:/{pt} 权限:{Prem}",
             "配置路径: tshock/[c/FF6962:{插件名}]/配置文件.json",
             "TShock官方Q群:816771079",
             "所在队伍:{队伍} {同队人数}/{别队人数}",
@@ -159,7 +167,7 @@ internal class Configuration
             "[c/FFFFFF:2.]智能进服公告、跨版本进服、修复地图区块缺失、boss伤害排行",
             "[c/FFFFFF:3.]批量改权限、导出权限表、复制文件、宝藏袋传送、修复局部图格",
             "[c/FFFFFF:4.]自动注册、自动建GM组、自动配权、进度锁、重置服务器",
-            "[c/FFFFFF:5.]修召唤入侵事件、修天塔柱刷物品BUG、投票回档",
+            "[c/FFFFFF:5.]修召唤入侵事件、修天塔柱刷物品BUG、个人投票回档",
             "[c/FFFFFF:6.]进服恢复队伍与出生点、切换队伍投票、队伍出生点修改投票",
             "---------",
             "发送[c/FF6962:任意消息]显示下条信息\n",

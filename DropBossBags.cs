@@ -35,6 +35,8 @@ internal class DropBossBags
             if (plr.Dead)
             {
                 plr.RespawnTimer = 0; // 立即复活
+                data.DeadTime = null;
+                DeadLimit.DeadPlayer.Remove(plr);
                 plr.Spawn(PlayerSpawnContext.ReviveFromDeath); // 触发复活
                 plr.SendMessage(TextGradient($"因击败[c/FF5149:{npc.FullName}]正为你自动复活!"), color);
             }

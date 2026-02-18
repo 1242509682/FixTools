@@ -97,7 +97,9 @@ public class ReaderPlayer
 
         try
         {
-            var plr2 = TShock.Players.FirstOrDefault(p => p != null && p.Name == name);
+            var plr2 = TShock.Players.FirstOrDefault(p => p != null &&
+            p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
             if (plr2 != null)
             {
                 // 玩家在线，恢复物品
@@ -131,7 +133,8 @@ public class ReaderPlayer
         try
         {
             var fName = Path.GetFileNameWithoutExtension(file);
-            var plr2 = TShock.Players.FirstOrDefault(p => p != null && p.Name == fName);
+            var plr2 = TShock.Players.FirstOrDefault(p => p != null &&
+            p.Name.Equals(fName, StringComparison.OrdinalIgnoreCase));
 
             if (plr2 != null)
             {
@@ -156,7 +159,9 @@ public class ReaderPlayer
     #region 导入所有存档给对应玩家,存在账号则覆盖，不在则创建账号
     public static void ReadPlayer(TSPlayer plr)
     {
-        string[] files = Directory.GetFiles(ReaderDir);
+        string[] files = Directory.GetFiles(ReaderDir)
+            .Where(f => f.EndsWith(".plr", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
 
         if (files.Count() == 0)
         {
@@ -172,7 +177,8 @@ public class ReaderPlayer
             {
 
                 var fName = Path.GetFileNameWithoutExtension(file);
-                var plr2 = TShock.Players.FirstOrDefault(p => p != null && p.Name == fName);
+                var plr2 = TShock.Players.FirstOrDefault(p => p != null &&
+                p.Name.Equals(fName, StringComparison.OrdinalIgnoreCase));
 
                 if (plr2 != null)
                 {
@@ -277,20 +283,33 @@ public class ReaderPlayer
             return ac;
         }
 
+        // 忽略大小写查找已有账号
+        foreach (var acc in TShock.UserAccounts.GetUserAccounts())
+        {
+            if (string.Equals(acc.Name, plr.name, StringComparison.OrdinalIgnoreCase))
+                return acc;
+        }
+
         // 自动注册流程（适配Caibot）
         if (!ServerApi.Plugins.Any(p => p.Plugin.Name == "CaiBotLitePlugin"))
         {
+            // 如果开启随机密码则应用随机,否则使用默认密码
+            string RandPass = GetRandPass();
+            var pass = Config.RandPass ? RandPass : Config.DefPass;
+
             // uuid从发指令的人身上拿 反正登录后uuid也会更新
             var group = TShock.Config.Settings.DefaultRegistrationGroupName;
-            var NewAcc = new UserAccount(plr.name, Config.DefPass, newUUID, group,
+            var NewAcc = new UserAccount(plr.name, pass, newUUID, group,
                                          DateTime.UtcNow.ToString("s"),
                                          DateTime.UtcNow.ToString("s"), "");
             try
             {
+                // 缓存一下玩家密码
+                PlayerState.GetData(plr.name).DefPass = pass;
                 // 密码上个哈希避免登录时改不了密码
-                NewAcc.CreateBCryptHash(Config.DefPass);
+                NewAcc.CreateBCryptHash(pass);
                 TShock.UserAccounts.AddUserAccount(NewAcc);
-                TShock.Log.ConsoleInfo($"已为{plr.name}创建账号,密码为:{Config.DefPass}");
+                TShock.Log.ConsoleInfo($"已为{plr.name}创建账号,密码为:{pass}");
             }
             finally
             {

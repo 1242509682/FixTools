@@ -16,6 +16,8 @@ internal class PlayerState
         public DateTime SendTime { get; set; } = DateTime.MinValue;
         // 自动注册后发送反馈语标志
         public bool Register { get; set; } = false;
+        // 随机密码
+        public string? DefPass { get; set; } = string.Empty;
         // 导存档给死亡玩家，需复活后的恢复存档数据
         public PlayerData? NeedRestores { get; set; } = null;
         // BOSS宝藏袋掉落坐标表
@@ -32,12 +34,18 @@ internal class PlayerState
         // 撤销修复文件路径（后进先出栈）
         public List<string> rwUndoStack = new();
 
+
         // 玩家队伍
         public int Team { get; set; } = -1; // 缓存的队伍ID
         public bool Lock { get; set; } = false; // 是否被锁定切换队伍（阻止切换）
         public DateTime? SwitchTime { get; set; } = null; // 记录切换队伍时间
         public Point? NeedTp { get; set; } = null; // 记录是否需要传送
         public DateTime? JoinTime { get; set; } = null; // 记录可以传送的时间点
+
+        // 玩家死亡状态下离开服务器时间
+        public DateTime? DeadTime { get; set; } = null;
+        // 回到死亡点
+        public List<Vector2> BackPos { get; set; } = new();
     }
     #endregion
 
