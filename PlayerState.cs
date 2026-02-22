@@ -30,9 +30,11 @@ internal class PlayerState
         // 标牌文件路径,用来修复标牌信息
         public string rwSign { get; set; } = string.Empty;
         // 获取到快照,开启精密线控仪检测
-        public bool rwWire { get; set; } = false;
+        public bool rwFix { get; set; } = false;
         // 撤销修复文件路径（后进先出栈）
         public List<string> rwUndoStack = new();
+        // 待保存的建筑名称
+        public string rwCopy { get; set; } = string.Empty;
 
 
         // 玩家队伍

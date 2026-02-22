@@ -16,11 +16,11 @@ internal class Configuration
     [JsonProperty("注册默认密码", Order = -198)]
     public string DefPass { get; set; } = "123456";
     [JsonProperty("修复复活检查", Order = -197)]
-    public bool FixSapwn { get; set; } = true;
+    public bool FixSapwn { get; set; } = false;
     [JsonProperty("死亡出服禁止进服", Order = -196)]
     public bool DeathLimitForJoin { get; set; } = false;
     [JsonProperty("回到死亡地点", Order = -195)]
-    public bool Back { get; set; } = true;
+    public bool Back { get; set; } = false;
 
     [JsonProperty("自动备份存档", Order = -170)]
     public bool AutoSavePlayer { get; set; } = true;

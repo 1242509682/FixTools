@@ -30,7 +30,7 @@ internal class PoutCmd
             mess.AppendLine($"/{pt} team ——队伍模式菜单");
             mess.AppendLine($"/{pt} dead ——修复复活检查开关");
             mess.AppendLine($"/back ——回到死亡地点");
-            mess.AppendLine($"/{pt} rw ——修复局部图格");
+            mess.AppendLine($"/{pt} rw ——图格操作功能菜单");
             mess.AppendLine($"/{pt} vs ——设置导出版本号");
             mess.AppendLine($"/{pt} join ——跨版本进服开关");
             mess.AppendLine($"/{pt} bag ——宝藏袋传送开关");
@@ -62,7 +62,7 @@ internal class PoutCmd
                             $"/tv ——队伍投票功能\n" +
                             $"/{pt} dead ——修复复活检查开关\n" +
                             $"/back ——回到死亡地点\n" +
-                            $"/{pt} rw ——修复局部图格\n" +
+                            $"/{pt} rw ——图格操作功能菜单\n" +
                             $"/{pt} vs ——设置导出版本号\n" +
                             $"/{pt} join ——跨版本进服开关\n" +
                             $"/{pt} bag ——宝藏袋传送开关\n" +
