@@ -173,6 +173,12 @@ internal class Utils
         else
             text = Regex.Replace(text, @"\{进度\}", "无", RegexOptions.IgnoreCase);
 
+        // 当前入侵事件
+        if (Main.invasionType > 0)
+            text = Regex.Replace(text, @"\{当前入侵\}", GetInvasionName(Main.invasionType), RegexOptions.IgnoreCase);
+        else
+            text = Regex.Replace(text, @"\{当前入侵\}", "无", RegexOptions.IgnoreCase);
+
         return text;
     }
     #endregion

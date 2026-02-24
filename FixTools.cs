@@ -6,6 +6,7 @@ using TerrariaApi.Server;
 using TShockAPI;
 using TShockAPI.DB;
 using TShockAPI.Hooks;
+using Terraria.GameContent.Creative;
 using static FixTools.PlayerState;
 using static FixTools.Utils;
 
@@ -17,7 +18,7 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 2, 22);
+    public override Version Version => new(2026, 2, 25);
     public override string Description => "本插件仅TShock测试版期间维护,指令/pout";
     #endregion
 
@@ -55,7 +56,6 @@ public partial class FixTools : TerrariaPlugin
         ServerApi.Hooks.ServerChat.Register(this, this.OnChat);
         On.Terraria.GameContent.CraftingRequests.CanCraftFromChest += CanCraft.OnCanCraftFromChest;
         On.Terraria.GameContent.BossDamageTracker.OnBossKilled += DamageTrackers.OnBossKilled;
-        // On.Terraria.WorldItem.GetShimmered += WorldItem_GetShimmered;
         TShockAPI.Commands.ChatCommands.Add(new Command(Prem, PoutCmd.Pouts, pt, "pt"));
         TShockAPI.Commands.ChatCommands.Add(new Command(string.Empty, BakCmd.bakCmd, bak));
         TShockAPI.Commands.ChatCommands.Add(new Command(string.Empty, TeamData.tvCmd, "tv"));
@@ -85,7 +85,6 @@ public partial class FixTools : TerrariaPlugin
             ServerApi.Hooks.ServerChat.Deregister(this, this.OnChat);
             On.Terraria.GameContent.CraftingRequests.CanCraftFromChest -= CanCraft.OnCanCraftFromChest;
             On.Terraria.GameContent.BossDamageTracker.OnBossKilled -= DamageTrackers.OnBossKilled;
-            // On.Terraria.WorldItem.GetShimmered -= WorldItem_GetShimmered;
             TShockAPI.Commands.ChatCommands.RemoveAll(x =>
             x.CommandDelegate == PoutCmd.Pouts ||
             x.CommandDelegate == BakCmd.bakCmd ||
@@ -290,6 +289,17 @@ public partial class FixTools : TerrariaPlugin
 
         var data = GetData(plr.Name);
         if (data is null) return;
+
+        // 管理进服无敌
+        if (Config.AutoGod && plr.HasPermission(Prem) && e.SpawnContext == PlayerSpawnContext.SpawningIntoWorld)
+        {
+            var Power = CreativePowerManager.Instance.GetPower<CreativePowers.GodmodePower>();
+            Power.SetEnabledState(plr.Index, true);
+
+            // 下面2条消息管理自己看不见,其他玩家可以看见(因为事件本身比玩家完全进来触发要早)
+            TSPlayer.All.SendMessage(TextGradient("已为[c/4CB5DE:管理员] {玩家名} 开启无敌模式", plr), color);
+            TSPlayer.All.SendMessage(TextGradient("当前进度:{进度}"), color);
+        }
 
         if (Config.TeamMode)
         {
@@ -565,15 +575,6 @@ public partial class FixTools : TerrariaPlugin
 
         WorldTile.FixSnapshot(e, plr);
 
-    }
-    #endregion
-
-    #region [废案]无法复现:获取微光转换物品事件（用于修复微光分解物品给2份材料的同步BUG）
-    private void WorldItem_GetShimmered(On.Terraria.WorldItem.orig_GetShimmered orig, WorldItem item)
-    {
-        if (item.shimmered) return; // 已处理，避免重复执行
-        item.shimmered = true; // 立即标记，防止后续调用
-        orig(item); // 执行原版分解逻辑
     }
     #endregion
 

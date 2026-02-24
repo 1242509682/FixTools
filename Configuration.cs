@@ -7,6 +7,8 @@ namespace FixTools;
 
 internal class Configuration
 {
+    [JsonProperty("管理进服无敌", Order = -202)]
+    public bool AutoGod { get; set; } = true;
     [JsonProperty("自建GM权限组", Order = -201)]
     public bool AutoAddGM { get; set; } = true;
     [JsonProperty("启用自动注册", Order = -200)]

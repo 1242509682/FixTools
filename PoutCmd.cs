@@ -22,6 +22,7 @@ internal class PoutCmd
             "[i:3456][C/F2F2C7:开发] [C/BFDFEA:by] [c/00FFFF:羽学] [i:3459]", color);
 
             var mess = new StringBuilder();
+            mess.AppendLine($"/{pt} god ——管理进服无敌");
             mess.AppendLine($"/{pt} plr ——玩家存档管理菜单");
             mess.AppendLine($"/{pt} save ——自动备份菜单");
             mess.AppendLine($"/{pt} vote ——投票回档开关");
@@ -54,6 +55,7 @@ internal class PoutCmd
         else
         {
             plr.SendMessage($"《{PluginName}》\n" +
+                            $"/{pt} god ——管理进服无敌\n" +
                             $"/{pt} plr ——玩家存档管理菜单\n" +
                             $"/{pt} save ——自动备份菜单\n" +
                             $"/{pt} vote ——投票回档开关\n" +
@@ -212,6 +214,11 @@ internal class PoutCmd
                 case "公告":
                 case "motd":
                     SetBool("进服公告", plr, () => Config.MotdEnabled, (val) => Config.MotdEnabled = val);
+                    break;
+
+                case "进服无敌":
+                case "god":
+                    SetBool("管理进服无敌", plr, () => Config.AutoGod, (val) => Config.AutoGod = val);
                     break;
 
                 case "bag":
