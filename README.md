@@ -8,9 +8,7 @@
 批量修改多组权限、删除指定路径文件、互动入服公告、修复天塔柱刷物品
 复制文件、重置服务器、开服控制台信息、修复物品召唤入侵事件、boss伤害排行
 复制粘贴修复局部图格、修复复活检查
-- 本插件仅适配于[TShcock非官测试版1454](https://github.com/WindFrost-CSFT/TShock/)
-
-
+- 本插件仅适配于[TShcock-Action版1455](https://github.com/Pryaxis/TShock/actions/workflows/ci-otapi3.yml)
 
 ## 指令
 
@@ -57,6 +55,9 @@
 ## 更新日志
 
 ```
+v20260227 ——1.2.0
+适配TShock-Action-2386
+
 v20260225 ——1.1.9
 加入了管理进服无敌，对应指令：/pt god
 对复制建筑与撤销操作的图格二维数据使用RLE压缩

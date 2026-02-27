@@ -9,7 +9,15 @@
 
   <ItemGroup>
     <PackageReference Include="OTAPI.Upcoming" Version="3.3.9" />
-    <PackageReference Include="UnrealMultiple.TShock-Beta" Version="6.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="TerrariaServer">
+      <HintPath>using\TerrariaServer.dll</HintPath>
+    </Reference>
+    <Reference Include="TShockAPI">
+      <HintPath>using\TShockAPI.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

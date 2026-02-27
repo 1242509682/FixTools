@@ -18,7 +18,7 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 2, 25);
+    public override Version Version => new(2026, 2, 27);
     public override string Description => "本插件仅TShock测试版期间维护,指令/pout";
     #endregion
 
@@ -27,7 +27,7 @@ public partial class FixTools : TerrariaPlugin
     public static string pt => "pout"; // 主指令名称
     public static string Prem => $"{pt}.use"; // 管理权限
     public static string bak => "bak"; // 投票指令名
-    public static string TShockVS => "1770f2d"; // 适配版本号
+    public static string TShockVS => "2386"; // 适配版本号
     public static readonly string MainPath = Path.Combine(TShock.SavePath, PluginName); // 主文件夹路径
     public static readonly string ConfigPath = Path.Combine(MainPath, "配置文件.json"); // 配置文件路径
     #endregion
