@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="OTAPI.Upcoming" Version="3.3.9" />
     <PackageReference Include="UnrealMultiple.TShock-Beta" Version="6.0.1" />
   </ItemGroup>
 
