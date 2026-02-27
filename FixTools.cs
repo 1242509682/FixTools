@@ -573,7 +573,7 @@ public partial class FixTools : TerrariaPlugin
            !plr.Active || !plr.IsLoggedIn)
             return;
 
-        WorldTile.FixSnapshot(e, plr);
+        WorldTile.FixSnap(e, plr);
 
     }
     #endregion

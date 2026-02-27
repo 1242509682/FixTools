@@ -56,6 +56,7 @@ public static class WorldTile
     private static readonly string ClipDir = Path.Combine(MainPath, "建筑存档");
     // 修复临时目录（存放加载的快照文件）
     private static readonly string RestoreDir = Path.Combine(MainPath, "建筑修复");
+    private static string GetClipPath(string name) => Path.Combine(ClipDir, $"{name}.clip");
     #endregion
 
     #region 主指令处理 /pt rw
@@ -98,7 +99,7 @@ public static class WorldTile
             case "create":
             case "paste":
             case "粘贴": // 粘贴子命令
-                HandlePaste(args, plr);
+                HandlePst(args, plr);
                 break;
 
             default: // 未知子命令，显示帮助
@@ -247,13 +248,6 @@ public static class WorldTile
         if (!Directory.Exists(ClipDir))
             Directory.CreateDirectory(ClipDir);
 
-        //string path = GetClipPath(name); // 获取建筑文件完整路径
-        //if (File.Exists(path))
-        //{
-        //    plr.SendMessage($"建筑 '{name}' 已存在，请使用其他名称", color);
-        //    return;
-        //}
-
         // 将建筑名称存入玩家数据，等待红电线拉取区域时使用
         GetData(plr.Name).rwCopy = name;
         plr.SendMessage($"准备保存建筑 {name}\n" +
@@ -265,7 +259,7 @@ public static class WorldTile
     /// <summary>
     /// 处理 sp 等粘贴子命令：粘贴指定建筑到玩家头顶
     /// </summary>
-    private static void HandlePaste(CommandArgs args, TSPlayer plr)
+    private static void HandlePst(CommandArgs args, TSPlayer plr)
     {
         // 无参数时列出所有可用建筑
         if (args.Parameters.Count < 3)
@@ -332,11 +326,13 @@ public static class WorldTile
 
         Rectangle rect = new Rectangle(startX, startY, w, h);
         // 保存粘贴前的区域状态以便撤销
-        var before = GetTileDataFromWorld(rect);
-        PushUndo(plr.Name, new UndoOperation { Area = rect, BeforeState = before, Timestamp = DateTime.Now });
+        var before = GetTileData(rect); 
+        var stack = LoadUndo(plr.Name);
+        stack.Push(new UndoOperation { Area = rect, BeforeState = before, Timestamp = DateTime.Now });
+        SaveUndo(plr.Name, stack);
 
         // 将建筑数据偏移到目标坐标
-        TileData? data = CloneWithOffset(clip, startX, startY);
+        TileData? data = CloneOff(clip, startX, startY);
 
         int count = 0;
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -350,25 +346,11 @@ public static class WorldTile
         {
             FixItem(data); // 粘贴箱子、实体、标牌
             sw.Stop();
-            var mess = $"粘贴 {input} 完成！已创造: {count} 个图格, 用时 {sw.ElapsedMilliseconds} ms";
 
-            if (GetData(plr.Name).rwUndoStack.Count > 0)
-                mess += $"\n撤销操作:/pt rw bk";
-
-            plr.SendMessage(TextGradient(mess), color);
+            plr.SendMessage(TextGradient($"粘贴 {input} 完成！已创造: {count} 个图格," +
+                                         $"用时 {sw.ElapsedMilliseconds} ms\n" +
+                                         $"撤销操作:/pt rw bk"), color);
         });
-    }
-
-    /// <summary>
-    /// 从建筑文件加载 TileData
-    /// </summary>
-    private static TileData? LoadClip(string name)
-    {
-        string path = GetClipPath(name);
-        if (!File.Exists(path)) return null;
-        using var baseStream = OpenGzip(path);
-        using var reader = new BinaryReader(baseStream);
-        return ReadTileData(reader);
     }
 
     /// <summary>
@@ -380,18 +362,60 @@ public static class WorldTile
         return Directory.GetFiles(ClipDir, "*.clip")
                         .Select(f => Path.GetFileNameWithoutExtension(f)).ToList();
     }
+    #endregion
+
+    #region 新增辅助克隆方法
+    /// <summary>
+    /// 深拷贝箱子，并可选择偏移坐标
+    /// </summary>
+    private static Chest CloneChest(Chest src, int offX = 0, int offY = 0)
+    {
+        var chest = new Chest(0, src.x + offX, src.y + offY, src.bankChest, src.maxItems)
+        {
+            name = src.name ?? "",
+            item = new Item[src.maxItems]
+        };
+        for (int i = 0; i < src.maxItems; i++)
+            chest.item[i] = src.item[i]?.Clone() ?? new Item();
+        return chest;
+    }
 
     /// <summary>
-    /// 根据建筑名称获取完整文件路径
+    /// 从 TileEntity 创建 EntityData，并可选择偏移坐标
     /// </summary>
-    private static string GetClipPath(string name) => Path.Combine(ClipDir, $"{name}.clip");
+    private static EntityData CloneEntity(TileEntity src, int offX = 0, int offY = 0)
+    {
+        using var ms = new MemoryStream();
+        using var bw = new BinaryWriter(ms);
+        TileEntity.Write(bw, src);
+        return new EntityData
+        {
+            Type = src.type,
+            X = (short)(src.Position.X + offX),
+            Y = (short)(src.Position.Y + offY),
+            ExtraData = ms.ToArray()
+        };
+    }
+
+    /// <summary>
+    /// 深拷贝标牌，并可选择偏移坐标
+    /// </summary>
+    private static Sign CloneSign(Sign src, int offX = 0, int offY = 0)
+    {
+        return new Sign
+        {
+            x = src.x + offX,
+            y = src.y + offY,
+            text = src.text
+        };
+    }
     #endregion
 
     #region 建筑数据克隆与偏移
     /// <summary>
     /// 克隆建筑数据，并将所有坐标偏移到目标位置
     /// </summary>
-    private static TileData CloneWithOffset(TileData src, int offX, int offY)
+    private static TileData CloneOff(TileData src, int offX, int offY)
     {
         var dst = new TileData();
 
@@ -411,16 +435,7 @@ public static class WorldTile
         {
             dst.Chests = new List<Chest>();
             foreach (var chest in src.Chests)
-            {
-                var newChest = new Chest(0, chest.x + offX, chest.y + offY, false, chest.maxItems)
-                {
-                    name = chest.name ?? "",
-                    item = new Item[chest.maxItems]
-                };
-                for (int i = 0; i < chest.maxItems; i++)
-                    newChest.item[i] = chest.item[i]?.Clone() ?? new Item();
-                dst.Chests.Add(newChest);
-            }
+                dst.Chests.Add(CloneChest(chest, offX, offY));
         }
 
         // 复制实体，偏移坐标
@@ -429,6 +444,7 @@ public static class WorldTile
             dst.EntData = new List<EntityData>();
             foreach (var ent in src.EntData)
             {
+                // 注意：EntityData 需要从 ExtraData 反序列化才能获得 TileEntity，此处直接复制并偏移坐标
                 dst.EntData.Add(new EntityData
                 {
                     Type = ent.Type,
@@ -444,9 +460,7 @@ public static class WorldTile
         {
             dst.Signs = new List<Sign>();
             foreach (var sign in src.Signs)
-            {
-                dst.Signs.Add(new Sign { x = sign.x + offX, y = sign.y + offY, text = sign.text });
-            }
+                dst.Signs.Add(CloneSign(sign, offX, offY));
         }
 
         return dst;
@@ -457,7 +471,7 @@ public static class WorldTile
     /// <summary>
     /// 处理 MassWireOperation 事件（玩家使用精密线控仪时触发）
     /// </summary>
-    public static void FixSnapshot(GetDataHandlers.MassWireOperationEventArgs e, TSPlayer plr)
+    public static void FixSnap(GetDataHandlers.MassWireOperationEventArgs e, TSPlayer plr)
     {
         var Mydata = GetData(plr.Name);
         if (e.ToolMode != 1) return; // 只处理红电线（ToolMode 1 表示红电线）
@@ -486,12 +500,14 @@ public static class WorldTile
             plr.SendMessage(TextGradient($"\n正在从备份恢复 ({x1},{y1}) => ({x2},{y2})"), color);
 
             // 从快照文件中读取指定区域的数据
-            var data = ReadWorldTiles(snapPath, rect, signPath);
+            var data = ReadWTile(snapPath, rect, signPath);
             if (data == null) return;
 
             // 保存当前区域状态以便撤销
-            var beforeState = GetTileDataFromWorld(rect);
-            PushUndo(plr.Name, new UndoOperation { Area = rect, BeforeState = beforeState, Timestamp = DateTime.Now });
+            var beforeState = GetTileData(rect);
+            var stack = LoadUndo(plr.Name);
+            stack.Push(new UndoOperation { Area = rect, BeforeState = beforeState, Timestamp = DateTime.Now });
+            SaveUndo(plr.Name, stack);
 
             var count = 0;
             var sw = Stopwatch.StartNew();
@@ -514,10 +530,10 @@ public static class WorldTile
                 Mydata.rwSnap = string.Empty;
                 Mydata.rwSign = string.Empty;
                 sw.Stop();
-                var mess = $"已恢复区域: {count} 个图格, 用时 {sw.ElapsedMilliseconds} ms";
-                if (Mydata.rwUndoStack.Count > 0)
-                    mess += $"\n撤销操作:/pt rw bk";
-                plr.SendMessage(TextGradient(mess), color);
+
+                plr.SendMessage(TextGradient($"已恢复区域: {count} 个图格, " +
+                                             $"用时 {sw.ElapsedMilliseconds} ms\n" +
+                                             $"撤销操作:/pt rw bk"), color);
             });
 
             e.Handled = true; // 标记事件已处理，阻止后续逻辑
@@ -525,7 +541,7 @@ public static class WorldTile
         else if (!string.IsNullOrEmpty(Mydata.rwCopy))
         {
             // 检查是否有待保存的建筑
-            SaveBuilding(plr, Mydata.rwCopy, rect); // 保存建筑
+            SaveBuild(plr, Mydata.rwCopy, rect);
             Mydata.rwCopy = string.Empty; // 清空状态
             e.Handled = true;
         }
@@ -536,41 +552,18 @@ public static class WorldTile
     /// <summary>
     /// 将指定矩形区域的图格、箱子、实体、标牌保存为建筑文件（相对坐标）
     /// </summary>
-    private static void SaveBuilding(TSPlayer plr, string name, Rectangle rect)
+    private static void SaveBuild(TSPlayer plr, string name, Rectangle rect)
     {
-        var clip = GetTileDataFromWorld(rect); // 获取世界区域数据
+        var clip = GetTileData(rect); // 获取世界区域数据（绝对坐标）
 
-        // 转换为相对坐标（相对于矩形左上角）
-        var newClip = new TileData
-        {
-            Tiles = clip.Tiles, // 图格直接复用，因为图格没有坐标字段
-            Chests = clip.Chests?.Select(c => new Chest(0, c.x - rect.X, c.y - rect.Y, c.bankChest, c.maxItems)
-            {
-                name = c.name,
-                item = c.item.Select(i => i?.Clone() ?? new Item()).ToArray()
-            }).ToList(),
-
-            EntData = clip.EntData?.Select(e => new EntityData
-            {
-                Type = e.Type,
-                X = (short)(e.X - rect.X),
-                Y = (short)(e.Y - rect.Y),
-                ExtraData = e.ExtraData?.ToArray()
-            }).ToList(),
-
-            Signs = clip.Signs?.Select(s => new Sign
-            {
-                x = s.x - rect.X,
-                y = s.y - rect.Y,
-                text = s.text
-            }).ToList()
-        };
+        // 转换为相对坐标（相对于矩形左上角）直接调用 CloneOff 传入负偏移
+        var relClip = CloneOff(clip, -rect.X, -rect.Y);
 
         string path = GetClipPath(name);
         using var fs = new FileStream(path, FileMode.Create);
         using var gz = new GZipStream(fs, CompressionLevel.Optimal);
         using var writer = new BinaryWriter(gz);
-        WriteTileData(writer, newClip); // 序列化写入
+        WriteTileData(writer, relClip);
 
         plr.SendMessage($"已保存建筑 '{name}' ({rect.Width}x{rect.Height})", color);
         // 清除玩家的区域点标记（来自 TShock 的 TempPoints）
@@ -579,10 +572,23 @@ public static class WorldTile
     }
     #endregion
 
+    #region 从文件读取建筑
+    /// <summary>
+    /// 从建筑文件加载 TileData
+    /// </summary>
+    private static TileData? LoadClip(string name)
+    {
+        string path = GetClipPath(name);
+        if (!File.Exists(path)) return null;
+        using var baseStream = new GZipStream(new FileStream(path, FileMode.Open), CompressionMode.Decompress);
+        using var reader = new BinaryReader(baseStream);
+        return ReadTileData(reader);
+    } 
+    #endregion
+
     #region 修复图格（核心）- 不分块，直接发送整个区域
     /// <summary>
     /// 将指定区域的图格替换为 TileData 中的数据，并返回修改的图格数量。
-    /// 注意：直接发送整个矩形区域更新，若区域过大可能导致网络异常，请谨慎使用。
     /// </summary>
     private static int FixTile(Rectangle rect, TileData data, int count)
     {
@@ -720,7 +726,7 @@ public static class WorldTile
     /// <summary>
     /// 从世界快照文件中读取指定矩形区域的数据
     /// </summary>
-    public static TileData? ReadWorldTiles(string path, Rectangle rect, string? signPath = null)
+    public static TileData? ReadWTile(string path, Rectangle rect, string? signPath = null)
     {
         if (!File.Exists(path))
         {
@@ -730,7 +736,7 @@ public static class WorldTile
 
         try
         {
-            using var stream = OpenGzip(path);
+            using var stream = new GZipStream(new FileStream(path, FileMode.Open), CompressionMode.Decompress);
             using var ms = new MemoryStream();
             stream.CopyTo(ms);
             ms.Position = 0;
@@ -775,23 +781,14 @@ public static class WorldTile
                 if (c == null) continue;
                 if (rect.Contains(c.x, c.y) || rect.Contains(c.x + 1, c.y) ||
                     rect.Contains(c.x, c.y + 1) || rect.Contains(c.x + 1, c.y + 1))
-                    res.Chests.Add(c.CloneWithSeparateItems()); // 深拷贝箱子及其物品
+                    res.Chests.Add(CloneChest(c, 0, 0)); // 使用辅助方法深拷贝
             }
 
             // 复制实体
             foreach (var e in TileSnapshot._tileEntities)
             {
                 if (e == null || !rect.Contains(e.Position.X, e.Position.Y)) continue;
-                using var msEnt = new MemoryStream();
-                using var bw = new BinaryWriter(msEnt);
-                TileEntity.Write(bw, e); // 将实体序列化到流
-                res.EntData.Add(new EntityData
-                {
-                    Type = e.type,
-                    X = e.Position.X,
-                    Y = e.Position.Y,
-                    ExtraData = msEnt.ToArray()
-                });
+                res.EntData.Add(CloneEntity(e, 0, 0)); // 使用辅助方法
             }
 
             TileSnapshot.Clear(); // 清理快照
@@ -849,7 +846,7 @@ public static class WorldTile
     /// <summary>
     /// 将玩家的撤销栈保存到文件（GZip 压缩）
     /// </summary>
-    private static void SaveUndoStack(string playerName, Stack<UndoOperation> stack)
+    private static void SaveUndo(string playerName, Stack<UndoOperation> stack)
     {
         if (!Directory.Exists(RestoreDir)) Directory.CreateDirectory(RestoreDir);
         string path = Path.Combine(RestoreDir, $"{playerName}_undo.bak");
@@ -864,22 +861,22 @@ public static class WorldTile
             writer.Write(op.Area.Width);
             writer.Write(op.Area.Height);
             writer.Write(op.Timestamp.Ticks);
-            WriteTileData(writer, op.BeforeState); // 写入操作前的数据
+            WriteTileData(writer, op.BeforeState);
         }
     }
 
     /// <summary>
     /// 从文件加载玩家的撤销栈
     /// </summary>
-    private static Stack<UndoOperation> LoadUndoStack(string playerName)
+    private static Stack<UndoOperation> LoadUndo(string playerName)
     {
         string path = Path.Combine(RestoreDir, $"{playerName}_undo.bak");
         if (!File.Exists(path)) return new Stack<UndoOperation>();
-        using var stream = OpenGzip(path);
+        using var stream = new GZipStream(new FileStream(path, FileMode.Open), CompressionMode.Decompress);
         using var reader = new BinaryReader(stream);
         int count = reader.ReadInt32();
         var list = new List<UndoOperation>(count);
-        for (int i = 0; i < count; i++) list.Add(ReadUndoOperation(reader));
+        for (int i = 0; i < count; i++) list.Add(ReadUndoOp(reader));
         list.Reverse(); // 因为栈是后进先出，从文件读出的顺序是栈底到栈顶，反转后便于 Push/Pop
         return new Stack<UndoOperation>(list);
     }
@@ -887,24 +884,14 @@ public static class WorldTile
     /// <summary>
     /// 从 BinaryReader 读取一个 UndoOperation 对象
     /// </summary>
-    private static UndoOperation ReadUndoOperation(BinaryReader reader)
+    private static UndoOperation ReadUndoOp(BinaryReader reader)
     {
         return new UndoOperation
         {
             Area = new Rectangle(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32()),
             Timestamp = new DateTime(reader.ReadInt64()),
-            BeforeState = ReadTileData(reader)
+            BeforeState = ReadTileData(reader) 
         };
-    }
-
-    /// <summary>
-    /// 向玩家的撤销栈压入一个操作（保存到文件）
-    /// </summary>
-    public static void PushUndo(string playerName, UndoOperation op)
-    {
-        var stack = LoadUndoStack(playerName);
-        stack.Push(op);
-        SaveUndoStack(playerName, stack);
     }
 
     /// <summary>
@@ -912,10 +899,10 @@ public static class WorldTile
     /// </summary>
     public static UndoOperation? PopUndo(string playerName)
     {
-        var stack = LoadUndoStack(playerName);
+        var stack = LoadUndo(playerName);
         if (stack.Count == 0) return null;
         var op = stack.Pop();
-        SaveUndoStack(playerName, stack);
+        SaveUndo(playerName, stack);
         return op;
     }
     #endregion
@@ -934,9 +921,6 @@ public static class WorldTile
             int h = data.Tiles.GetLength(1);
             writer.Write(w); writer.Write(h);
             WriteTiles(writer, data.Tiles); // 压缩写入图格
-            //for (int x = 0; x < w; x++)
-            //    for (int y = 0; y < h; y++)
-            //        WriteTile(writer, data.Tiles[x, y]);
         }
 
         // 写入箱子
@@ -988,9 +972,6 @@ public static class WorldTile
         {
             data.Tiles = new Tile[w, h];
             ReadTiles(reader, data.Tiles, w, h); // 解压图格
-            //for (int x = 0; x < w; x++)
-            //    for (int y = 0; y < h; y++)
-            //        data.Tiles[x, y] = ReadTile(reader);
         }
 
         int chestCount = reader.ReadInt32();
@@ -1062,7 +1043,7 @@ public static class WorldTile
     /// <summary>
     /// 从当前世界获取指定矩形区域的图格、箱子、实体、标牌数据
     /// </summary>
-    private static TileData GetTileDataFromWorld(Rectangle rect)
+    private static TileData GetTileData(Rectangle rect)
     {
         var data = new TileData
         {
@@ -1086,15 +1067,7 @@ public static class WorldTile
         {
             if (c == null) continue;
             if (rect.Contains(c.x, c.y) || rect.Contains(c.x + 1, c.y) || rect.Contains(c.x, c.y + 1) || rect.Contains(c.x + 1, c.y + 1))
-            {
-                var copy = new Chest(index: 0, x: c.x, y: c.y, bank: c.bankChest, maxItems: c.maxItems)
-                {
-                    name = c.name,
-                    item = new Item[c.maxItems]
-                };
-                for (int i = 0; i < c.maxItems; i++) copy.item[i] = c.item[i]?.Clone() ?? new Item();
-                data.Chests.Add(copy);
-            }
+                data.Chests.Add(CloneChest(c, 0, 0)); // 使用辅助方法
         }
 
         // 复制实体
@@ -1102,50 +1075,15 @@ public static class WorldTile
         {
             var pos = kv.Key;
             if (rect.Contains(pos.X, pos.Y))
-            {
-                using var ms = new MemoryStream();
-                using var bw = new BinaryWriter(ms);
-                TileEntity.Write(bw, kv.Value);
-                data.EntData.Add(new EntityData
-                {
-                    Type = kv.Value.type,
-                    X = pos.X,
-                    Y = pos.Y,
-                    ExtraData = ms.ToArray()
-                });
-            }
+                data.EntData.Add(CloneEntity(kv.Value, 0, 0)); // 使用辅助方法
         }
 
         // 复制标牌
         foreach (var s in Main.sign)
             if (s != null && rect.Contains(s.x, s.y))
-                data.Signs.Add(new Sign { x = s.x, y = s.y, text = s.text });
+                data.Signs.Add(CloneSign(s, 0, 0)); // 使用辅助方法
 
         return data;
-    }
-    #endregion
-
-    #region GZip 辅助方法
-    /// <summary>
-    /// 检查文件是否为 GZip 压缩格式（通过魔数 0x1F 0x8B）
-    /// </summary>
-    private static bool IsGzip(string path)
-    {
-        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
-        return fs.Length >= 2 && fs.ReadByte() == 0x1F && fs.ReadByte() == 0x8B;
-    }
-
-    /// <summary>
-    /// 打开文件，如果是 GZip 则返回解压流，否则返回普通文件流
-    /// </summary>
-    private static Stream OpenGzip(string path)
-    {
-        if (IsGzip(path))
-        {
-            var fs = new FileStream(path, FileMode.Open);
-            return new GZipStream(fs, CompressionMode.Decompress);
-        }
-        return new FileStream(path, FileMode.Open);
     }
     #endregion
 
@@ -1167,47 +1105,10 @@ public static class WorldTile
     /// </summary>
     private static List<Sign> LoadSigns(string path)
     {
-        using var stream = OpenGzip(path);
+        using var stream = new GZipStream(new FileStream(path, FileMode.Open), CompressionMode.Decompress);
         using var sr = new StreamReader(stream);
         string json = sr.ReadToEnd();
         return JsonConvert.DeserializeObject<List<Sign>>(json) ?? new List<Sign>();
-    }
-    #endregion
-
-    #region 废案:读写未压缩图格数据
-    /// <summary>
-    /// 将单个 Tile 写入 BinaryWriter（仅写入必要字段）
-    /// </summary>
-    private static void WriteTile(BinaryWriter writer, Tile tile)
-    {
-        writer.Write(tile.bTileHeader);
-        writer.Write(tile.bTileHeader2);
-        writer.Write(tile.bTileHeader3);
-        writer.Write(tile.frameX);
-        writer.Write(tile.frameY);
-        writer.Write(tile.liquid);
-        writer.Write(tile.sTileHeader);
-        writer.Write(tile.type);
-        writer.Write(tile.wall);
-    }
-
-    /// <summary>
-    /// 从 BinaryReader 读取单个 Tile
-    /// </summary>
-    private static Tile ReadTile(BinaryReader reader)
-    {
-        return new Tile
-        {
-            bTileHeader = reader.ReadByte(),
-            bTileHeader2 = reader.ReadByte(),
-            bTileHeader3 = reader.ReadByte(),
-            frameX = reader.ReadInt16(),
-            frameY = reader.ReadInt16(),
-            liquid = reader.ReadByte(),
-            sTileHeader = reader.ReadUInt16(),
-            type = reader.ReadUInt16(),
-            wall = reader.ReadUInt16()
-        };
     }
     #endregion
 
