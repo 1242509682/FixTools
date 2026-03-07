@@ -1,1 +1,0 @@
-https://github.com/Pryaxis/TShock/actions/workflows/ci-otapi3.yml
