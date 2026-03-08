@@ -50,7 +50,7 @@ internal class WritePlayer
         try
         {
             var all = new List<UserAccount>();
-            using (QueryResult queryResult = TShock.DB.QueryReader("SELECT * FROM tsCharacter"))
+            using (var queryResult = TShock.DB.QueryReader("SELECT * FROM tsCharacter"))
             {
                 while (queryResult.Read())
                 {
@@ -78,16 +78,19 @@ internal class WritePlayer
             // 批量导出方法
             foreach (var one in all)
             {
-                Player player = NewPlayer(one);
+                // 先检查该账号是否有玩家在线
+                var online = TShock.Players.FirstOrDefault(p => p?.Account?.ID == one.ID);
+                Player player;
+
+                if (online != null)
+                    player = online.TPlayer; // 直接使用在线玩家数据
+                else
+                    player = NewPlayer(one); // 离线玩家才从数据库还原
 
                 if (Export(player, exportDir))
-                {
                     yes.Add(player.name);
-                }
                 else
-                {
                     no.Add(player.name);
-                }
             }
 
             CopyWorld(exportDir, autoSave); // 复制世界文件
@@ -163,13 +166,13 @@ internal class WritePlayer
                     users[0] = users.Find(x => x.Name == name)!;
                 }
 
-                Player? player = NewPlayer(users[0]);
+                Player player = NewPlayer(users[0]);
 
-                if (!Export(player, exportDir)) return;
-
-                CopyWorld(exportDir); // 复制世界文件
-
-                plr.SendMessage($"导出成功！目录:\n{exportDir}/{name}.plr", color);
+                if (Export(player, exportDir))
+                {
+                    CopyWorld(exportDir); // 复制世界文件
+                    plr.SendMessage($"导出成功！目录:\n{exportDir}/{name}.plr", color);
+                }
             }
             else if (users.Count == 0)
             {
@@ -199,25 +202,17 @@ internal class WritePlayer
     #endregion
 
     #region 创建新玩家
-    private static Player NewPlayer(UserAccount one)
+    private static Player NewPlayer(UserAccount acc)
     {
         var p = new MyPlayer();
-        p.Account.ID = one.ID;
-        p.Player = new Player
-        {
-            name = one.Name
-        };
+        p.Account.ID = acc.ID;
+        p.Player = new Player { name = acc.Name };
 
-        var data = TShock.CharacterDB.GetPlayerData(p, one.ID);
-
-        try
-        {
-            data.RestoreCharacter(p);
-        }
+        var data = TShock.CharacterDB.GetPlayerData(p, acc.ID);
+        try{ data.RestoreCharacter(p); }
         catch { }
 
-        Player? player = p.Player;
-        return player;
+        return p.Player;
     }
     #endregion
 
