@@ -55,8 +55,11 @@
 ## 更新日志
 
 ```
+v20260312 ——1.2.1
+适配TShock 6.1.0 Releases版
+
 v20260310 ——1.2.0
-适配TShock 6 Releases版
+适配TShock 6.0.0 Releases版
 
 v20260225 ——1.1.9
 加入了管理进服无敌，对应指令：/pt god
