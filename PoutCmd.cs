@@ -88,7 +88,6 @@ internal class PoutCmd
         var GameVersion = Config.GameVersion == -1 ? GameVersionID.Latest : Config.GameVersion;
         var vsText = GetVSText(GameVersion);
         plr.SendMessage($"当前导出版本号：{vsText}", color);
-        plr.SendMessage($"注:本插件仅ts临时版期间维护,后续将不再更新", color2);
     }
     #endregion
 
