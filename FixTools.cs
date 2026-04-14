@@ -19,7 +19,7 @@ public partial class FixTools : TerrariaPlugin
     public override string Name => PluginName;
     public override string Author => "羽学";
     public override Version Version => new(2026, 4, 15);
-    public override string Description => "本插件仅TShock测试版期间维护,指令/pout";
+    public override string Description => "本插件涵盖超级多功能,指令:/pt";
     #endregion
 
     #region 静态变量
