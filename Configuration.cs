@@ -278,7 +278,7 @@ internal class Configuration
             "tshock.npc.startinvasion","tshock.npc.summonboss","tshock.spectating",
             "tshock.admin.seeplayerids","tshock.world.time.usemoondial","tshock.npc.startdd2",
             "tshock.tp.spawn","tshock.tp.self","tshock.tp.home","tshock.tp.npc","tshock.admin.house",
-            "tshock.world.movenpc","tshock.admin.warp","tshock.npc.clearanglerquests",
+            "tshock.world.movenpc","tshock.admin.warp","tshock.npc.clearanglerquests","tshock.ignore.npcbuff",
             "zhipm.vi","zhipm.vs","zhipm.sort", "challenger.fun","challenger.tip","weaponplus.plus",
             "economics.deal","economics.skill","economics.skill.use",
             "economics.skillpro.use","economics.rpg","economics.task.use",
@@ -302,12 +302,7 @@ internal class Configuration
             "veinminer","history.get","bridgebuilder.bridge","swapplugin.toggle","autofish","autofish.common",
             "chireiden.omni.whynot","permcontrol","RecipesBrowser","DataSync","itempreserver.receive",
             "EndureBoost","ExtraDamage.use","create.copy","treedrop.togglemsg","DonotFuck",
-            "在线礼包","免拦截","死者复生",
-        ];
-
-        Permission["vip"] =
-        [
-            "tshock.ignore.npcbuff"
+            "在线礼包","免拦截","死者复生","afm.use","sg.use","itask.ues"
         ];
     }
     #endregion

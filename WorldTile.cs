@@ -80,11 +80,6 @@ public static class WorldTile
                 HandleFix(args, plr);
                 break;
 
-            case "bk":
-            case "撤销": // 撤销子命令
-                UndoCmd(plr);
-                break;
-
             case "add":
             case "sv":
             case "save":
@@ -102,10 +97,6 @@ public static class WorldTile
                 HandlePst(args, plr);
                 break;
 
-            case "t":   // 统一的区域操作指令
-                HandleTileOp(args, plr);
-                break;
-
             default: // 未知子命令，显示帮助
                 ShowHelp(plr);
                 break;
@@ -121,8 +112,7 @@ public static class WorldTile
         mess.AppendLine($"/{pt} rw fix [索引] ——从备份修复区域");
         mess.AppendLine($"/{pt} rw sv <名称>   ——输入名称后，用蓝图复制建筑");
         mess.AppendLine($"/{pt} rw sp [名称/索引] ——粘贴建筑到头顶");
-        mess.AppendLine($"/{pt} rw t [编号] ——范围编辑图格");
-        mess.AppendLine($"/{pt} rw bk ——撤销上次操作\n");
+        mess.AppendLine($"/{pt} bk ——撤销上次操作\n");
 
         mess.AppendLine($"修复区域:无参数时列出自动备份");
         mess.AppendLine($"粘贴建筑:无参数时列出建筑");
@@ -204,7 +194,7 @@ public static class WorldTile
         }
 
         Mydata.rwFix = true; // 标记玩家进入修复模式
-        plr.SendMessage("请使用 [i:3611] 红电线[i:530] 拉取需要恢复的区域", color2);
+        plr.SendMessage($"请使用 [i:{ItemID.WireKite}] 拉取需要恢复的区域", color2);
     }
     #endregion
 
@@ -212,7 +202,7 @@ public static class WorldTile
     /// <summary>
     /// 处理 bk 子命令：撤销上一次操作
     /// </summary>
-    private static void UndoCmd(TSPlayer plr)
+    public static void UndoCmd(TSPlayer plr)
     {
         // 弹出该玩家的撤销操作栈顶元素
         var op = PopUndo(plr.Name);
@@ -256,7 +246,7 @@ public static class WorldTile
         // 将建筑名称存入玩家数据，等待红电线拉取区域时使用
         GetData(plr.Name).rwCopy = name;
         plr.SendMessage($"准备保存建筑 {name}\n" +
-                        $"请使用 [i:3611] 红电线[i:530] 拉取需要复制的区域", color);
+                        $"请使用 [i:{ItemID.WireKite}] 拉取需要复制的区域", color);
     }
     #endregion
 
@@ -331,7 +321,7 @@ public static class WorldTile
 
         Rectangle rect = new Rectangle(startX, startY, w, h);
         // 保存粘贴前的区域状态以便撤销
-        var before = GetTileData(rect); 
+        var before = GetTileData(rect);
         var stack = LoadUndo(plr.Name);
         stack.Push(new UndoOperation { Area = rect, BeforeState = before, Timestamp = DateTime.Now });
         SaveUndo(plr.Name, stack);
@@ -354,7 +344,7 @@ public static class WorldTile
 
             plr.SendMessage(Grad($"粘贴 {input} 完成！已创造: {count} 个图格," +
                                          $"用时 {sw.ElapsedMilliseconds} ms\n" +
-                                         $"撤销操作:/pt rw bk"), color);
+                                         $"撤销操作:/pt bk"), color);
         });
     }
 
@@ -479,7 +469,7 @@ public static class WorldTile
     public static void FixSnap(GetDataHandlers.MassWireOperationEventArgs e, TSPlayer plr)
     {
         var Mydata = GetData(plr.Name);
-        if (e.ToolMode != 1) return; // 只处理红电线（ToolMode 1 表示红电线）
+        int toolMode = e.ToolMode;
 
         // 计算框选区域的边界（确保 x1<=x2, y1<=y2）
         int x1 = Math.Min(e.StartX, e.EndX);
@@ -538,7 +528,7 @@ public static class WorldTile
 
                 plr.SendMessage(Grad($"已恢复区域: {count} 个图格, " +
                                              $"用时 {sw.ElapsedMilliseconds} ms\n" +
-                                             $"撤销操作:/pt rw bk"), color);
+                                             $"撤销操作:/pt bk"), color);
             });
 
             e.Handled = true; // 标记事件已处理，阻止后续逻辑
@@ -553,10 +543,13 @@ public static class WorldTile
 
         if (Mydata.rw != 0)
         {
+            // 区域操作：记录工具模式
+            Mydata.rwToolMode = toolMode;
             int op = Mydata.rw;
             int a1 = Mydata.rwA1;
             int a2 = Mydata.rwA2;
             int a3 = Mydata.rwA3;
+            int dir = Mydata.rwDir;
 
             var beforeState = GetTileData(rect);
             var stack = LoadUndo(plr.Name);
@@ -564,12 +557,13 @@ public static class WorldTile
             SaveUndo(plr.Name, stack);
 
             var sw = Stopwatch.StartNew();
-            Task.Run(() => ExecuteEdit(rect, op, a1, a2, a3)).ContinueWith(_ =>
+            Task.Run(() => ExecuteEdit(rect, op, a1, a2, a3, dir, toolMode)).ContinueWith(_ =>
             {
                 sw.Stop();
-                plr.SendMessage(Grad($"操作完成，用时 {sw.ElapsedMilliseconds} ms\n撤销：/pt rw bk"), color);
+                plr.SendMessage(Grad($"操作完成，用时 {sw.ElapsedMilliseconds} ms\n撤销操作：/pt bk"), color);
                 Mydata.rw = 0;
                 Mydata.rwA1 = Mydata.rwA2 = Mydata.rwA3 = 0;
+                Mydata.rwToolMode = 0;
             });
             e.Handled = true;
         }
@@ -611,7 +605,7 @@ public static class WorldTile
         using var baseStream = new GZipStream(new FileStream(path, FileMode.Open), CompressionMode.Decompress);
         using var reader = new BinaryReader(baseStream);
         return ReadTileData(reader);
-    } 
+    }
     #endregion
 
     #region 修复图格（核心）- 不分块，直接发送整个区域
@@ -918,7 +912,7 @@ public static class WorldTile
         {
             Area = new Rectangle(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32()),
             Timestamp = new DateTime(reader.ReadInt64()),
-            BeforeState = ReadTileData(reader) 
+            BeforeState = ReadTileData(reader)
         };
     }
 
@@ -1507,25 +1501,27 @@ public static class WorldTile
     #endregion
 
     #region 批量区域操作指令
-    private static void HandleTileOp(CommandArgs args, TSPlayer plr)
+    public static void HandleTileOp(CommandArgs args, TSPlayer plr)
     {
-        if (args.Parameters.Count < 3)
+        if (args.Parameters.Count < 2)
         {
             var sb = new StringBuilder();
-            sb.AppendLine($"用法: /pt rw t <编号>");
-            sb.AppendLine("1清理方块 2放置方块(保留) 3替换方块 4清后放方块 5涂装方块");
-            sb.AppendLine("6清理墙壁 7放置墙壁(保留) 8清后放墙壁 9涂装墙壁");
-            sb.AppendLine("10清理涂装 11涂装所有 12虚化切换 13清理虚化");
-            sb.AppendLine("14放置制动器 15清理制动器 16清理液体");
-            sb.AppendLine("17放水 18放岩浆 19放蜂蜜 20放微光");
-            sb.AppendLine("21清理电线 22放电线 23斜坡 24半砖 25全砖 26清理所有");
-            plr.SendMessage(Grad(sb.ToString()),color);
+            sb.AppendLine("\n《编辑列表》");
+            sb.AppendLine($"1清理{Icon(ItemID.Wood)} 2填充{Icon(ItemID.Wood)} 3替换{Icon(ItemID.Wood)} 4覆盖{Icon(ItemID.Wood)} 5涂装{Icon(ItemID.Wood)}");
+            sb.AppendLine($"6清理{Icon(ItemID.WoodWall)} 7填充{Icon(ItemID.WoodWall)} 8替换{Icon(ItemID.WoodWall)} 9覆盖{Icon(ItemID.WoodWall)}  10涂装{Icon(ItemID.WoodWall)}");
+            sb.AppendLine($"11清理涂装{Icon(ItemID.WhitePaint)} 12全部涂装{Icon(ItemID.WhitePaint)} 13虚化切换{Icon(ItemID.ActuationRod)}");
+            sb.AppendLine($"14清理液体{Icon(ItemID.SuperAbsorbantSponge)} 15放{Icon(ItemID.WaterBucket)} 16放{Icon(ItemID.LavaBucket)} 17放{Icon(ItemID.HoneyBucket)} 18放{Icon(ItemID.BottomlessShimmerBucket)}");
+            sb.AppendLine($"19电路修改{Icon(ItemID.WireKite)} 20斜坡{Icon(ItemID.Wood)} 21半砖{Icon(ItemID.Wood)} 22全砖{Icon(ItemID.Wood)} 23清理所有{Icon(ItemID.Dynamite)}");
+
+            sb.AppendLine("\n范围编辑图格: /pt t <编号>");
+            sb.AppendLine("撤销编辑操作: /pt bk");
+            plr.SendMessage(Grad(sb.ToString()), color);
             return;
         }
 
-        if (!int.TryParse(args.Parameters[2], out int op) || op < 1 || op > 26)
+        if (!int.TryParse(args.Parameters[1], out int op) || op < 1 || op > 23)
         {
-            plr.SendMessage("操作编号必须是1-26", color);
+            plr.SendMessage("操作编号为 1-23", color);
             return;
         }
 
@@ -1536,7 +1532,7 @@ public static class WorldTile
             case 2:
             case 3:
             case 4:
-                if (sel.createTile < 0) { plr.SendMessage(Grad("请手持需要放置的方块"),color); return; }
+                if (sel.createTile < 0) { plr.SendMessage(Grad("请手持需要放置的方块"), color); return; }
                 SetOpMode(plr, op, sel.createTile, sel.placeStyle);
                 break;
             case 5:
@@ -1547,45 +1543,51 @@ public static class WorldTile
                 SetOpMode(plr, 5, paintId, isPaint ? 1 : 0);
                 break;
             case 6: SetOpMode(plr, 6); break;
-            case 7:
-            case 8:
+            case 7: // 填充墙壁（保留原有）
                 if (sel.createWall < 0) { plr.SendMessage(Grad("请手持需要放置的墙壁"), color); return; }
-                SetOpMode(plr, op, sel.createWall);
+                SetOpMode(plr, 7, sel.createWall);
                 break;
-            case 9:
+
+            case 8: // 替换墙壁
+                if (sel.createWall < 0) { plr.SendMessage(Grad("请手持需要放置的墙壁"), color); return; }
+                SetOpMode(plr, 8, sel.createWall);
+                break;
+
+            case 9: // 覆盖墙壁（清后放）
+                if (sel.createWall < 0) { plr.SendMessage(Grad("请手持需要放置的墙壁"), color); return; }
+                SetOpMode(plr, 9, sel.createWall);
+                break;
+            case 10: // 涂装墙壁
                 if (sel.paint > 0) { paintId = sel.paint; isPaint = true; }
                 else if (sel.paintCoating > 0) { paintId = sel.paintCoating; isPaint = false; }
                 else { plr.SendMessage(Grad("请手持油漆或涂料"), color); return; }
-                SetOpMode(plr, 9, paintId, isPaint ? 1 : 0);
+                SetOpMode(plr, 10, paintId, isPaint ? 1 : 0);
                 break;
-            case 10: SetOpMode(plr, 10); break;
-            case 11:
-                if (sel.paint > 0) { paintId = sel.paint; isPaint = true; }
-                else if (sel.paintCoating > 0) { paintId = sel.paintCoating; isPaint = false; }
+            case 11: SetOpMode(plr, 11); break; // 清理涂装
+            case 12: // 涂装所有
+                byte paintIdAll; bool isPaintAll;
+                if (sel.paint > 0) { paintIdAll = sel.paint; isPaintAll = true; }
+                else if (sel.paintCoating > 0) { paintIdAll = sel.paintCoating; isPaintAll = false; }
                 else { plr.SendMessage(Grad("请手持油漆或涂料"), color); return; }
-                SetOpMode(plr, 11, paintId, isPaint ? 1 : 0);
+                SetOpMode(plr, 12, paintIdAll, isPaintAll ? 1 : 0);
                 break;
-            case 12: SetOpMode(plr, 12); break;
-            case 13: SetOpMode(plr, 13); break;
-            case 14: SetOpMode(plr, 14); break;
-            case 15: SetOpMode(plr, 15); break;
-            case 16: SetOpMode(plr, 16); break;
-            case 17: SetOpMode(plr, 17); break;
-            case 18: SetOpMode(plr, 18); break;
-            case 19: SetOpMode(plr, 19); break;
-            case 20: SetOpMode(plr, 20); break;
-            case 21: SetOpMode(plr, 21); break;
-            case 22: SetOpMode(plr, 22); break;
-            case 23:
+            case 13: SetOpMode(plr, 13); break; // 虚化切换
+            case 14: SetOpMode(plr, 14); break; // 清理液体
+            case 15: SetOpMode(plr, 15); break; // 放水
+            case 16: SetOpMode(plr, 16); break; // 放岩浆
+            case 17: SetOpMode(plr, 17); break; // 放蜂蜜
+            case 18: SetOpMode(plr, 18); break; // 放微光
+            case 19: SetOpMode(plr, 19); break; // 电路修改
+            case 20: // 斜坡
                 int slopeType = (plr.TPlayer.direction == 1) ? 1 : 2;
-                SetOpMode(plr, 23, slopeType);
+                SetOpMode(plr, 20, slopeType);
                 break;
-            case 24:
+            case 21: // 半砖
                 int halfType = (plr.TPlayer.direction == 1) ? 3 : 4;
-                SetOpMode(plr, 24, halfType);
+                SetOpMode(plr, 21, halfType);
                 break;
-            case 25: SetOpMode(plr, 25); break;
-            case 26: SetOpMode(plr, 26); break;
+            case 22: SetOpMode(plr, 22); break; // 全砖
+            case 23: SetOpMode(plr, 23); break; // 清理所有
         }
     }
     #endregion
@@ -1598,44 +1600,62 @@ public static class WorldTile
         data.rwA1 = arg1;
         data.rwA2 = arg2;
         data.rwA3 = arg3;
+        data.rwDir = plr.TPlayer.direction;
 
         string msg = op switch
         {
-            1 => "清理方块模式",
-            2 => "放置方块(保留)模式",
-            3 => "替换方块模式",
-            4 => "清后放方块模式",
-            5 => "涂装方块模式",
-            6 => "清理墙壁模式",
-            7 => "放置墙壁(保留)模式",
-            8 => "清后放墙壁模式",
-            9 => "涂装墙壁模式",
-            10 => "清理涂装模式",
-            11 => "涂装所有模式",
-            12 => "虚化切换模式",
-            13 => "清理虚化模式",
-            14 => "放置制动器模式",
-            15 => "清理制动器模式",
-            16 => "清理液体模式",
-            17 => "放水模式",
-            18 => "放岩浆模式",
-            19 => "放蜂蜜模式",
-            20 => "放微光模式",
-            21 => "清理电线模式",
-            22 => "放电线模式",
-            23 => "斜坡模式",
-            24 => "半砖模式",
-            25 => "全砖模式",
-            26 => "清理所有模式",
+            1 => $"清理{Icon(ItemID.Wood)}",
+            2 => $"填充{Icon(ItemID.Wood)}(根据玩家朝向)",
+            3 => $"替换{Icon(ItemID.Wood)}(根据玩家朝向)",
+            4 => $"覆盖{Icon(ItemID.Wood)}(根据玩家朝向)",
+            5 => $"涂装{Icon(ItemID.SpectrePaintbrush)} -> {Icon(ItemID.Wood)}",
+            6 => $"清理{Icon(ItemID.WoodWall)}",
+            7 => $"填充{Icon(ItemID.WoodWall)}",
+            8 => $"替换{Icon(ItemID.WoodWall)}",
+            9 => $"覆盖{Icon(ItemID.WoodWall)}",
+            10 => $"涂装{Icon(ItemID.SpectrePaintRoller)} -> {Icon(ItemID.WoodWall)}",
+            11 => $"清理涂装{Icon(ItemID.WhitePaint)}",
+            12 => $"全部涂装{Icon(ItemID.WhitePaint)}",
+            13 => $"虚化切换{Icon(ItemID.ActuationRod)}（根据范围统一）",
+            14 => $"清理液体{Icon(ItemID.SuperAbsorbantSponge)}",
+            15 => $"放水{Icon(ItemID.WaterBucket)}",
+            16 => $"放岩浆{Icon(ItemID.LavaBucket)}",
+            17 => $"放蜂蜜{Icon(ItemID.HoneyBucket)}",
+            18 => $"放微光{Icon(ItemID.BottomlessShimmerBucket)}",
+            19 => $"电路修改{Icon(ItemID.WireKite)}",
+            20 => $"斜坡{Icon(ItemID.Wood)}(根据玩家朝向)",
+            21 => $"半砖{Icon(ItemID.Wood)}(根据玩家朝向)",
+            22 => $"全砖{Icon(ItemID.Wood)}",
+            23 => $"清理所有{Icon(ItemID.Dynamite)}",
             _ => "未知操作"
         };
-        plr.SendMessage($"已进入{msg}，请使用红电线框选区域", color);
+        plr.SendMessage(Utils.Grad($"模式:{msg} 请用{Icon(ItemID.WireKite)}框选范围"), color);
     }
     #endregion
 
     #region 区域编辑实现
-    private static void ExecuteEdit(Rectangle rect, int op, int a1, int a2, int a3)
+    private static void ExecuteEdit(Rectangle rect, int op, int a1, int a2, int a3, int dir, int toolMode)
     {
+        // 对于 op == 13，需要先扫描区域
+        if (op == 13)
+        {
+            bool hasInactive = false;
+            // 扫描
+            for (int x = rect.X; x < rect.Right && !hasInactive; x++)
+                for (int y = rect.Y; y < rect.Bottom && !hasInactive; y++)
+                    hasInactive = Main.tile[x, y]?.inActive() == true;
+            // 统一设置
+            for (int x = rect.X; x < rect.Right; x++)
+                for (int y = rect.Y; y < rect.Bottom; y++)
+                    if (Main.tile[x, y] is Tile t)
+                    {
+                        t.inActive(!hasInactive);
+                        NetMessage.SendTileSquare(-1, x, y);
+                    }
+            return;
+        }
+
+        // 其他操作正常循环
         for (int x = rect.X; x < rect.Right; x++)
             for (int y = rect.Y; y < rect.Bottom; y++)
             {
@@ -1645,38 +1665,113 @@ public static class WorldTile
                 switch (op)
                 {
                     case 1: tile.Clear(TileDataType.Tile); break;
-                    case 2: if (!tile.active()) WorldGen.PlaceTile(x, y, a1, mute: true, style: a2); break;
-                    case 3: WorldGen.ReplaceTile(x, y, (ushort)a1, a2); break;
-                    case 4: tile.Clear(TileDataType.Tile); WorldGen.PlaceTile(x, y, a1, mute: true, style: a2); break;
+                    case 2: if (!WorldGen.SolidTile(tile)) { WorldGen.PlaceTile(x, y, a1, mute: true, style: a2); SetDire(tile, dir); } break;
+                    case 3: WorldGen.ReplaceTile(x, y, (ushort)a1, a2); SetDire(tile, dir); break;
+                    case 4: tile.Clear(TileDataType.Tile); WorldGen.PlaceTile(x, y, a1, mute: true, style: a2); SetDire(tile, dir); break;
                     case 5: if (a2 == 1) WorldGen.paintTile(x, y, (byte)a1); else WorldGen.paintCoatTile(x, y, (byte)a1); break;
                     case 6: WorldGen.KillWall(x, y, false); break;
                     case 7: if (tile.wall == 0) WorldGen.PlaceWall(x, y, a1); break;
-                    case 8: WorldGen.KillWall(x, y, false); WorldGen.PlaceWall(x, y, a1); break;
-                    case 9: if (a2 == 1) WorldGen.paintWall(x, y, (byte)a1); else WorldGen.paintCoatWall(x, y, (byte)a1); break;
-                    case 10: tile.ClearBlockPaintAndCoating(); tile.ClearWallPaintAndCoating(); break;
+                    case 8: WorldGen.ReplaceWall(x, y, (ushort)a1); break;
+                    case 9: WorldGen.KillWall(x, y, false); WorldGen.PlaceWall(x, y, a1); break;
+                    case 10:if (a2 == 1) WorldGen.paintWall(x, y, (byte)a1); else WorldGen.paintCoatWall(x, y, (byte)a1);break;
                     case 11:
+                        WorldGen.paintTile(x, y, 0, broadCast: true, paintEffects: true);
+                        WorldGen.paintWall(x, y, 0, broadCast: true, paintEffects: true);
+                        WorldGen.paintCoatTile(x, y, 0, broadcast: true, coatingEffects: true);
+                        WorldGen.paintCoatWall(x, y, 0, broadcast: true, coatingEffects: true);
+                        break;
+                    case 12: // 涂装所有
                         if (a2 == 1) { WorldGen.paintTile(x, y, (byte)a1); WorldGen.paintWall(x, y, (byte)a1); }
                         else { WorldGen.paintCoatTile(x, y, (byte)a1); WorldGen.paintCoatWall(x, y, (byte)a1); }
                         break;
-                    case 12: tile.inActive(!tile.inActive()); break;
-                    case 13: tile.inActive(false); break;
-                    case 14: WorldGen.PlaceActuator(x, y); break;
-                    case 15: WorldGen.KillActuator(x, y); break;
-                    case 16: WorldGen.EmptyLiquid(x, y); break;
-                    case 17: ClearEverything(x, y); tile.liquid = byte.MaxValue; tile.liquidType(0); break;
-                    case 18: ClearEverything(x, y); tile.liquid = byte.MaxValue; tile.liquidType(1); break;
-                    case 19: ClearEverything(x, y); tile.liquid = byte.MaxValue; tile.liquidType(2); break;
-                    case 20: ClearEverything(x, y); tile.liquid = byte.MaxValue; tile.liquidType(3); break;
-                    case 21: WorldGen.KillWire(x, y); break;
-                    case 22: WorldGen.PlaceWire(x, y); break;
-                    case 23: if (a1 == 1 || a1 == 2) WorldGen.SlopeTile(x, y, a1); break;
-                    case 24: if (a1 == 3 || a1 == 4) WorldGen.SlopeTile(x, y, a1); break;
-                    case 25: tile.Clear(TileDataType.Slope); break;
-                    case 26: ClearEverything(x, y); break;
+                    case 14: // 清理液体
+                        WorldGen.EmptyLiquid(x, y);
+                        break;
+                    case 15: // 放水
+                        ClearEverything(x, y); tile.liquid = byte.MaxValue; tile.liquidType(0);
+                        break;
+                    case 16: // 放岩浆
+                        ClearEverything(x, y); tile.liquid = byte.MaxValue; tile.liquidType(1);
+                        break;
+                    case 17: // 放蜂蜜
+                        ClearEverything(x, y); tile.liquid = byte.MaxValue; tile.liquidType(2);
+                        break;
+                    case 18: // 放微光
+                        ClearEverything(x, y); tile.liquid = byte.MaxValue; tile.liquidType(3);
+                        break;
+                    case 19: // 电路修改
+                        bool isPlace = toolMode >= 1 && toolMode <= 31;
+                        SetWire(x, y, toolMode, isPlace);
+                        break;
+                    case 20: // 斜坡
+                        if (a1 == 1 || a1 == 2) WorldGen.SlopeTile(x, y, a1);
+                        break;
+                    case 21: // 半砖
+                        if (a1 == 3 || a1 == 4) WorldGen.SlopeTile(x, y, a1);
+                        break;
+                    case 22: // 全砖
+                        tile.Clear(TileDataType.Slope);
+                        break;
+                    case 23: // 清理所有
+                        ClearEverything(x, y);
+                        break;
                 }
                 NetMessage.SendTileSquare(-1, x, y);
             }
     }
+    #endregion
+
+    #region 设置方块朝向
+    private static void SetDire(ITile tile, int dir)
+    {
+        if (tile == null || !tile.active()) return;
+        if (!Main.tileFrameImportant[tile.type] && dir == 1)
+        {
+            tile.frameX += 18;
+        }
+    }
+    #endregion
+
+    #region 根据精密线控模式自动设置电线与制动器状态
+    private static void SetWire(int x, int y, int toolMode, bool isPlace)
+    {
+        // 清理模式编号范围 33~63，对应放置模式编号 1~31 加上偏移 32
+        int mode = toolMode;
+        bool isClean = mode >= 33 && mode <= 63;
+        if (isClean) mode -= 32; // 转换为对应的放置模式编号
+
+        if (mode < 1 || mode > 31) return;
+
+        // 根据位掩码执行操作
+        if (isPlace && !isClean || !isPlace && isClean)
+        {
+            if ((mode & 1) != 0) // 红
+            {
+                if (isPlace) WorldGen.PlaceWire(x, y);
+                else WorldGen.KillWire(x, y);
+            }
+            if ((mode & 2) != 0) // 绿
+            {
+                if (isPlace) WorldGen.PlaceWire2(x, y);
+                else WorldGen.KillWire2(x, y);
+            }
+            if ((mode & 4) != 0) // 蓝
+            {
+                if (isPlace) WorldGen.PlaceWire3(x, y);
+                else WorldGen.KillWire3(x, y);
+            }
+            if ((mode & 8) != 0) // 黄
+            {
+                if (isPlace) WorldGen.PlaceWire4(x, y);
+                else WorldGen.KillWire4(x, y);
+            }
+            if ((mode & 16) != 0) // 制动器
+            {
+                if (isPlace) WorldGen.PlaceActuator(x, y);
+                else WorldGen.KillActuator(x, y);
+            }
+        }
+    } 
     #endregion
 
     #region 清理一切方法

@@ -18,7 +18,7 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 4, 14);
+    public override Version Version => new(2026, 4, 15);
     public override string Description => "本插件仅TShock测试版期间维护,指令/pout";
     #endregion
 
@@ -585,7 +585,7 @@ public partial class FixTools : TerrariaPlugin
         if (PeList.Contains(plr.Index))
         {
             var mess2 = $"\n[c/FC6F62:注:] 聊天按钮放左边[c/FBA562:背包]UI界面\n" +
-                        "既能显示[c/56DD77:长文本],也能[c/F2F861:开箱]输指令\n" +
+                        "既能显示[c/56DD77:长文本],也能[c/F2F861:方便]看指令\n" +
                         "[c/AAAAAA:(仅进服显示1次,后续不再弹出)]\n";
 
             plr.SendMessage(Grad(mess2), color);

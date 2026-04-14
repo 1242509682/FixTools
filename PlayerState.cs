@@ -41,6 +41,8 @@ internal class PlayerState
         public int rwA1 = 0;        // 参数1
         public int rwA2 = 0;        // 参数2
         public int rwA3 = 0;        // 参数3
+        public int rwDir = 0;       // 操作时玩家的朝向（1右 -1左）
+        public int rwToolMode = 0; // 当前操作的精密线控仪工具模式（电线颜色）
 
         // 玩家队伍
         public int Team { get; set; } = -1; // 缓存的队伍ID

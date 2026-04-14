@@ -29,7 +29,9 @@ internal class PoutCmd
             mess.AppendLine($"/{bak} ——投票回档功能");
             mess.AppendLine($"/tv ——队伍投票功能");
             mess.AppendLine($"/{pt} team ——队伍模式菜单");
-            mess.AppendLine($"/{pt} rw ——图格操作功能菜单");
+            mess.AppendLine($"/{pt} rw ——建筑编辑功能");
+            mess.AppendLine($"/{pt} t ——范围编辑图格");
+            mess.AppendLine($"/{pt} bk ——撤销图格与建筑操作");
             mess.AppendLine($"/{pt} tp ——传送功能");
             mess.AppendLine($"/{pt} vs ——设置导出版本号");
             mess.AppendLine($"/{pt} join ——跨版本进服开关");
@@ -61,7 +63,9 @@ internal class PoutCmd
                             $"/{bak} ——投票回档功能\n" +
                             $"/{pt} team ——队伍模式菜单\n" +
                             $"/tv ——队伍投票功能\n" +
-                            $"/{pt} rw ——图格操作功能菜单\n" +
+                            $"/{pt} rw ——建筑编辑功能\n" +
+                            $"/{pt} t ——范围编辑图格\n" +
+                            $"/{pt} bk ——撤销图格与建筑操作\n" +
                             $"/{pt} vs ——设置导出版本号\n" +
                             $"/{pt} join ——跨版本进服开关\n" +
                             $"/{pt} bag ——宝藏袋传送开关\n" +
@@ -150,6 +154,17 @@ internal class PoutCmd
                     {
                         WorldTile.DoSnapshot(args, plr);
                     }
+                    break;
+
+                case "t":   // 图格范围编辑指令
+                case "tile":
+                case "图格":
+                    WorldTile.HandleTileOp(args, plr);
+                    break;
+
+                case "bk":   // 图格撤销指令
+                case "撤销":
+                    WorldTile.UndoCmd(plr);
                     break;
 
                 case "传送":
