@@ -543,14 +543,30 @@ public static class WorldTile
 
         if (Mydata.rw != 0)
         {
-            // 区域操作：记录工具模式
-            Mydata.rwToolMode = toolMode;
+            // 根据框选方向决定朝向（用于方块、斜坡、半砖）
+            int dir = (e.EndX > e.StartX) ? 1 : -1;
             int op = Mydata.rw;
             int a1 = Mydata.rwA1;
             int a2 = Mydata.rwA2;
             int a3 = Mydata.rwA3;
-            int dir = Mydata.rwDir;
 
+            // 斜坡：1右斜坡 2左斜坡
+            if (op == 20)
+            {
+                a1 = (dir == 1) ? 1 : 2;
+                Mydata.rwA1 = a1;
+            }
+            // 半砖：3右半砖 4左半砖
+            else if (op == 21)
+            {
+                a1 = (dir == 1) ? 3 : 4;
+                Mydata.rwA1 = a1;
+            }
+
+            // 覆盖方向（用于方块放置的朝向）
+            Mydata.rwDir = dir;
+
+            // 保存撤销状态等（不变）
             var beforeState = GetTileData(rect);
             var stack = LoadUndo(plr.Name);
             stack.Push(new UndoOperation { Area = rect, BeforeState = beforeState, Timestamp = DateTime.Now });
@@ -1725,10 +1741,17 @@ public static class WorldTile
     private static void SetDire(ITile tile, int dir)
     {
         if (tile == null || !tile.active()) return;
-        if (!Main.tileFrameImportant[tile.type] && dir == 1)
+
+        // 单格物品（frameX 为 -1）直接翻转
+        if (dir == 1) // 右朝向
         {
-            tile.frameX += 18;
+            // 直接增加 frameX，假设每个样式占 18 像素
+            int newFrameX = tile.frameX + 18;
+            // 简单处理溢出：如果超过 54（假设最多3个样式）则回绕，可根据需要调整
+            if (newFrameX >= 54) newFrameX -= 54;
+            tile.frameX = (short)newFrameX;
         }
+
     }
     #endregion
 
