@@ -22,8 +22,8 @@ internal class FixStartInvasion
         // 检查权限
         if (!plr.HasPermission("tshock.npc.startinvasion") && itemType.Contains(sel.type))
         {
-            plr.SendMessage(TextGradient("[{插件名}] 你没有权限使用召唤入侵物品[c/FF514A:{物品名}]！", plr), color);
-            plr.SendMessage(TextGradient("请通知管理给予权限:\n" +
+            plr.SendMessage(Grad("[{插件名}] 你没有权限使用召唤入侵物品[c/FF514A:{物品名}]！", plr), color);
+            plr.SendMessage(Grad("请通知管理给予权限:\n" +
                                          "/group addperm default tshock.npc.startinvasion\n", plr), color);
             return;
         }
@@ -56,7 +56,7 @@ internal class FixStartInvasion
             // 检查是否已有入侵在进行
             if (Main.invasionType != 0)
             {
-                plr.SendMessage(TextGradient($"\n[{PluginName}]\n" +
+                plr.SendMessage(Grad($"\n[{PluginName}]\n" +
                                              $"已有1个入侵事件[c/FF5C57:({GetInvasionName(Main.invasionType)})]进行中！\n" +
                                              $"使用指令[c/FF5C57:结束]入侵:/worldevent invasion"), color);
                 return;
@@ -106,7 +106,7 @@ internal class FixStartInvasion
                 NetMessage.SendData(MessageID.InvasionProgressReport);
 
                 // 发送全局通知
-                TShock.Utils.Broadcast(TextGradient($"{plr.Name} 召唤了{GetInvasionName(Invtype)}入侵！"), color);
+                TShock.Utils.Broadcast(Grad($"{plr.Name} 召唤了{GetInvasionName(Invtype)}入侵！"), color);
             }
             catch (Exception ex)
             {

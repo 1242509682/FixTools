@@ -157,7 +157,7 @@ internal static class TeamData
         // 有出生点,则播报剩余多久传回
         var isJoin = DateTime.Now - data.JoinTime.Value;
         var rening = 1 + isJoin.TotalSeconds;
-        plr.SendMessage(TextGradient($"回到队伍出生点剩余:{rening:F1}秒"), color);
+        plr.SendMessage(Grad($"回到队伍出生点剩余:{rening:F1}秒"), color);
 
         // 加入到现在超过1秒 立即传回
         if (isJoin.TotalSeconds >= 1)
@@ -193,7 +193,7 @@ internal static class TeamData
             // 传送回队伍出生点
             var spawn = data.NeedTp.Value;
             plr.Teleport(spawn.X * 16, spawn.Y * 16);
-            plr.SendMessage(TextGradient($"已传回{GetTeamCName(plr.Team)}出生点"), color);
+            plr.SendMessage(Grad($"已传回{GetTeamCName(plr.Team)}出生点"), color);
 
             data.NeedTp = null;
             data.JoinTime = null;
@@ -240,7 +240,7 @@ internal static class TeamData
 
         if (Config.TeamDeathPun && MyTeam.Count > 0)
         {
-            TSPlayer.All.SendMessage(TextGradient($"正在执行{teamName}团灭惩罚!"), color);
+            TSPlayer.All.SendMessage(Grad($"正在执行{teamName}团灭惩罚!"), color);
         }
 
         // 从本队成员扣除一件物品送给其他队伍的惩罚功能
@@ -268,7 +268,7 @@ internal static class TeamData
         // 检查队伍锁定
         if (data.Lock)
         {
-            plr.SendMessage(TextGradient($"你的队伍已锁定为{GetTeamCName(data.Team)},无法切换"), Color.Red);
+            plr.SendMessage(Grad($"你的队伍已锁定为{GetTeamCName(data.Team)},无法切换"), Color.Red);
             e.Handled = true;
             plr.SetTeam(oldTeam);
             return;
@@ -279,7 +279,7 @@ internal static class TeamData
         {
             TimeSpan timeSpan = DateTime.Now - data.SwitchTime!.Value;
             double remain = Config.SwitchTeamCD - timeSpan.TotalSeconds;
-            plr.SendMessage(TextGradient($"队伍切换冷却中，请等待:[c/508DC8:{remain:f2}]秒"), color);
+            plr.SendMessage(Grad($"队伍切换冷却中，请等待:[c/508DC8:{remain:f2}]秒"), color);
             e.Handled = true;
             plr.SetTeam(oldTeam); // 强制还原队伍
             return;
@@ -337,7 +337,7 @@ internal static class TeamData
             {
                 if (p != null && p.Active)
                 {
-                    p.SendMessage(TextGradient(msg), color);
+                    p.SendMessage(Grad(msg), color);
                 }
             }
         }
@@ -387,7 +387,7 @@ internal static class TeamData
                 string rejectMsg = vote.Type == VoteType.Join
                     ? $"加入 {teamName} 的申请被拒绝"
                     : $"设置 {teamName} 出生点的申请被拒绝";
-                app.SendMessage(TextGradient(rejectMsg), color);
+                app.SendMessage(Grad(rejectMsg), color);
             }
         }
 
@@ -397,7 +397,7 @@ internal static class TeamData
             var p = TShock.Players[i];
             if (p != null && p.Active && (p.Name == vote.AppName || p.Team == vote.Team))
             {
-                p.SendMessage(TextGradient(msg), color);
+                p.SendMessage(Grad(msg), color);
             }
         }
 
@@ -444,7 +444,7 @@ internal static class TeamData
         if (notVoted.Count > 0)
             msg += $"未投票: [c/888888:{string.Join("、", notVoted)}]";
 
-        plr.SendMessage(TextGradient(msg), color);
+        plr.SendMessage(Grad(msg), color);
     }
     #endregion
 
@@ -495,7 +495,7 @@ internal static class TeamData
         foreach (var p in stats.Players)
         {
             if (p == null || !p.Active) continue;
-            p.SendMessage(TextGradient(msg), color);
+            p.SendMessage(Grad(msg), color);
         }
     }
     #endregion
@@ -512,7 +512,7 @@ internal static class TeamData
             // 检查玩家是否已有未结束的申请
             if (HasPending(plr.Name))
             {
-                plr.SendMessage(TextGradient("您已有未完成的队伍申请，请等待投票结束"), Color.Yellow);
+                plr.SendMessage(Grad("您已有未完成的队伍申请，请等待投票结束"), Color.Yellow);
                 e.Handled = true;
                 plr.SetTeam(oldTeam);
                 return true;
@@ -521,7 +521,7 @@ internal static class TeamData
             // 检查目标队伍是否已有未结束的投票
             if (HasTeamVote(newTeam))
             {
-                plr.SendMessage(TextGradient("该队伍正在进行投票，请稍后再试"), Color.Yellow);
+                plr.SendMessage(Grad("该队伍正在进行投票，请稍后再试"), Color.Yellow);
                 e.Handled = true;
                 plr.SetTeam(oldTeam);
                 return true;
@@ -543,7 +543,7 @@ internal static class TeamData
             // 如果目标队伍没有其他成员，直接允许加入
             if (target.Count == 0)
             {
-                plr.SendMessage(TextGradient($"已加入{teamName}（队伍内无其他成员）"), color);
+                plr.SendMessage(Grad($"已加入{teamName}（队伍内无其他成员）"), color);
                 return false; // 返回false，让后续逻辑处理正常的队伍切换
             }
 
@@ -569,14 +569,14 @@ internal static class TeamData
 
                 foreach (var p in target)
                 {
-                    p.SendMessage(TextGradient(applyMsg), color);
+                    p.SendMessage(Grad(applyMsg), color);
                 }
 
-                plr.SendMessage(TextGradient($"已向{teamName}发送申请，等待投票结果"), color);
+                plr.SendMessage(Grad($"已向{teamName}发送申请，等待投票结果"), color);
             }
             else
             {
-                plr.SendMessage(TextGradient("申请创建失败，请稍后再试"), color);
+                plr.SendMessage(Grad("申请创建失败，请稍后再试"), color);
             }
             return true;
         }
@@ -652,7 +652,7 @@ internal static class TeamData
                 mess.Append($"剩余时间: [c/00CED1:{vote.Remain}]秒");
             }
 
-            plr.SendMessage(TextGradient(mess.ToString()), color);
+            plr.SendMessage(Grad(mess.ToString()), color);
         }
     }
     #endregion
@@ -788,14 +788,14 @@ internal static class TeamData
 
         if (args.Parameters.Count < 3)
         {
-            plr.SendMessage(TextGradient("用法: /tv fp <玩家> <队伍id> [-L]"), color);
-            plr.SendMessage(TextGradient("玩家: 玩家名或玩家索引(1-255)"), color);
+            plr.SendMessage(Grad("用法: /tv fp <玩家> <队伍id> [-L]"), color);
+            plr.SendMessage(Grad("玩家: 玩家名或玩家索引(1-255)"), color);
             plr.SendMessage("队伍id: \n" +
                             "[c/5ADECE:白队](0),[c/F56470:红队](1)," +
                             "[c/74E25C:绿队](2),[c/5A9DDE:蓝队](3)," +
                             "[c/FCF466:黄队](4),[c/E15BC2:粉队](5)", color);
-            plr.SendMessage(TextGradient("-L: 可选,锁定队伍"), color);
-            plr.SendMessage(TextGradient("【[c/E24763:注]】: 使用/who -i 可查看玩家索引"), color);
+            plr.SendMessage(Grad("-L: 可选,锁定队伍"), color);
+            plr.SendMessage(Grad("【[c/E24763:注]】: 使用/who -i 可查看玩家索引"), color);
 
             return;
         }
@@ -834,12 +834,12 @@ internal static class TeamData
         int teamId = -1;
         if (!int.TryParse(team, out int id) || id < 1 || id > 5)
         {
-            plr.SendMessage(TextGradient("队伍id: \n" +
+            plr.SendMessage(Grad("队伍id: \n" +
                             "[c/5ADECE:白队](0),[c/F56470:红队](1)," +
                             "[c/74E25C:绿队](2),[c/5A9DDE:蓝队](3)," +
                             "[c/FCF466:黄队](4),[c/E15BC2:粉队](5)"), color);
 
-            plr.SendMessage(TextGradient($"请输入队伍对应的数字id,禁止设置白队"), color);
+            plr.SendMessage(Grad($"请输入队伍对应的数字id,禁止设置白队"), color);
             return;
         }
         teamId = id;
@@ -862,9 +862,9 @@ internal static class TeamData
             data.Lock = lockTeam;
 
             // 发送消息
-            plr.SendMessage(TextGradient($"已为离线玩家 {acc.Name} 设置队伍 {GetTeamCName(teamId)}" +
+            plr.SendMessage(Grad($"已为离线玩家 {acc.Name} 设置队伍 {GetTeamCName(teamId)}" +
                            (lockTeam ? " [c/FF5555:(已锁定)]" : "")), color);
-            plr.SendMessage(TextGradient("该玩家下次进入服务器时将自动分配到指定队伍"), color);
+            plr.SendMessage(Grad("该玩家下次进入服务器时将自动分配到指定队伍"), color);
             return;
         }
 
@@ -880,10 +880,10 @@ internal static class TeamData
         data2.SwitchTime = DateTime.Now;
 
         // 发送消息
-        plr.SendMessage(TextGradient($"已将 {target.Name} (索引:{target.Index}) 分配到 {GetTeamCName(data2.Team)}" +
+        plr.SendMessage(Grad($"已将 {target.Name} (索引:{target.Index}) 分配到 {GetTeamCName(data2.Team)}" +
                        (lockTeam ? " [c/FF5555:(已锁定)]" : "")), color);
 
-        target.SendMessage(TextGradient($"你已被分配到 {GetTeamCName(data2.Team)}" +
+        target.SendMessage(Grad($"你已被分配到 {GetTeamCName(data2.Team)}" +
                           (lockTeam ? " [c/FF5555:(队伍已锁定)]" : "")), color);
     }
     #endregion
@@ -894,7 +894,7 @@ internal static class TeamData
         // 检查队伍出生点功能是否开启
         if (!Config.TeamSpawn)
         {
-            plr.SendMessage(TextGradient("队伍出生点功能未开启，无法使用"), color);
+            plr.SendMessage(Grad("队伍出生点功能未开启，无法使用"), color);
             return;
         }
 
@@ -911,7 +911,7 @@ internal static class TeamData
         // 不准设置白队出生点
         if (team < 1)
         {
-            plr.SendMessage(TextGradient($"禁止设置{GetTeamCName(0)}出生点"), color);
+            plr.SendMessage(Grad($"禁止设置{GetTeamCName(0)}出生点"), color);
             return;
         }
 
@@ -919,7 +919,7 @@ internal static class TeamData
         if (plr.HasPermission(Prem))
         {
             SpawnPoint[team] = new Point((int)plr.X / 16, (int)(plr.Y / 16));
-            TSPlayer.All.SendMessage(TextGradient($"管理 {plr.Name} 已将 {(int)plr.X / 16},{(int)plr.Y / 16} 设为" +
+            TSPlayer.All.SendMessage(Grad($"管理 {plr.Name} 已将 {(int)plr.X / 16},{(int)plr.Y / 16} 设为" +
                                                   $"{GetTeamCName(plr.Team)}出生点"), color);
             return;
         }
@@ -927,7 +927,7 @@ internal static class TeamData
         // 检查该队伍是否已有投票（无论类型）
         if (HasTeamVote(team))
         {
-            plr.SendMessage(TextGradient("该队伍已有投票正在进行，请稍后再试"), Color.Yellow);
+            plr.SendMessage(Grad("该队伍已有投票正在进行，请稍后再试"), Color.Yellow);
             return;
         }
 
@@ -943,7 +943,7 @@ internal static class TeamData
         // 无其他成员，返回
         if (members.Count == 0)
         {
-            plr.SendMessage(TextGradient($"申请修改{GetTeamCName(plr.Team)}出生点最少需2人"), color);
+            plr.SendMessage(Grad($"申请修改{GetTeamCName(plr.Team)}出生点最少需2人"), color);
             return;
         }
 
@@ -964,13 +964,13 @@ internal static class TeamData
                          $"同意: /tv [c/5A9CDE:y] 或拒绝: /tv [c/F4636F:n]（{Config.TeamVoteTime}秒）";
 
             foreach (var m in members)
-                m.SendMessage(TextGradient(msg), color);
+                m.SendMessage(Grad(msg), color);
 
-            plr.SendMessage(TextGradient($"已向{teamName}其他成员申请 设置出生点 "), color);
+            plr.SendMessage(Grad($"已向{teamName}其他成员申请 设置出生点 "), color);
         }
         else
         {
-            plr.SendMessage(TextGradient("发起申请失败，请稍后再试"), color);
+            plr.SendMessage(Grad("发起申请失败，请稍后再试"), color);
         }
     }
     #endregion
@@ -1058,7 +1058,7 @@ internal static class TeamData
         mess.AppendLine($"[c/3FAEDB:集体团灭][{state5}] /{pt} tm d");
 
         if (plr.RealPlayer)
-            plr.SendMessage(TextGradient(mess.ToString()), color);
+            plr.SendMessage(Grad(mess.ToString()), color);
         else
             plr.SendMessage(mess.ToString(), color);
     }

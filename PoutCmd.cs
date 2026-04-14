@@ -29,9 +29,8 @@ internal class PoutCmd
             mess.AppendLine($"/{bak} ——投票回档功能");
             mess.AppendLine($"/tv ——队伍投票功能");
             mess.AppendLine($"/{pt} team ——队伍模式菜单");
-            mess.AppendLine($"/{pt} dead ——修复复活检查开关");
-            mess.AppendLine($"/back ——回到死亡地点");
             mess.AppendLine($"/{pt} rw ——图格操作功能菜单");
+            mess.AppendLine($"/{pt} tp ——传送功能");
             mess.AppendLine($"/{pt} vs ——设置导出版本号");
             mess.AppendLine($"/{pt} join ——跨版本进服开关");
             mess.AppendLine($"/{pt} bag ——宝藏袋传送开关");
@@ -62,8 +61,6 @@ internal class PoutCmd
                             $"/{bak} ——投票回档功能\n" +
                             $"/{pt} team ——队伍模式菜单\n" +
                             $"/tv ——队伍投票功能\n" +
-                            $"/{pt} dead ——修复复活检查开关\n" +
-                            $"/back ——回到死亡地点\n" +
                             $"/{pt} rw ——图格操作功能菜单\n" +
                             $"/{pt} vs ——设置导出版本号\n" +
                             $"/{pt} join ——跨版本进服开关\n" +
@@ -87,7 +84,7 @@ internal class PoutCmd
 
         var AutoBoss = Config.ProgressLock ? "已开启" : "已禁用";
         var PlayerCount = TShock.Utils.GetActivePlayerCount();
-        plr.SendMessage(TextGradient($"进度锁:{AutoBoss} 人数:{PlayerCount}/{Config.UnLockCount}人"), color);
+        plr.SendMessage(Grad($"进度锁:{AutoBoss} 人数:{PlayerCount}/{Config.UnLockCount}人"), color);
         var GameVersion = Config.GameVersion == -1 ? GameVersionID.Latest : Config.GameVersion;
         var vsText = GetVSText(GameVersion);
         plr.SendMessage($"当前导出版本号：{vsText}", color);
@@ -193,10 +190,6 @@ internal class PoutCmd
                                 break;
                         }
                     }
-                    break;
-
-                case "dead":
-                    SetBool("修复复活检查", plr, () => Config.FixSapwn, (val) => Config.FixSapwn = val);
                     break;
 
                 case "j":
@@ -432,7 +425,7 @@ internal class PoutCmd
         mess.AppendLine($"[c/3FAEDB:消息][{state7}] /{pt} sv msg");
 
         if (plr.RealPlayer)
-            plr.SendMessage(TextGradient(mess.ToString()), color);
+            plr.SendMessage(Grad(mess.ToString()), color);
         else
             plr.SendMessage(mess.ToString(), color);
     }
@@ -758,7 +751,7 @@ internal class PoutCmd
         // 检查是否有确认参数
         if (args.Parameters.Count < 2 || !args.Parameters[1].Equals("yes", StringComparison.OrdinalIgnoreCase))
         {
-            plr.SendMessage(TextGradient($"此操作会清理tshock.sqlite数据库中的指定数据表，且不可逆转！"), color);
+            plr.SendMessage(Grad($"此操作会清理tshock.sqlite数据库中的指定数据表，且不可逆转！"), color);
             plr.SendMessage($"确认操作请输入:/{pt} sql yes", color);
             return;
         }
@@ -793,7 +786,7 @@ internal class PoutCmd
         // 检查是否有确认参数
         if (args.Parameters.Count < 2 || !args.Parameters[1].Equals("yes", StringComparison.OrdinalIgnoreCase))
         {
-            plr.SendMessage(TextGradient($"此操作会清理当前地图与地图备份、自动备份存档、服务器日志，且不可逆转！"), color);
+            plr.SendMessage(Grad($"此操作会清理当前地图与地图备份、自动备份存档、服务器日志，且不可逆转！"), color);
             plr.SendMessage($"确认操作请输入:/{pt} rm yes", color);
             return;
         }
@@ -1227,7 +1220,7 @@ internal class PoutCmd
         if (!plr.RealPlayer)
             plr.SendMessage(info.ToString(), color);
         else
-            plr.SendMessage(TextGradient(info.ToString()), color);
+            plr.SendMessage(Grad(info.ToString()), color);
     }
     #endregion
 
@@ -1325,7 +1318,7 @@ internal class PoutCmd
         if (!plr.RealPlayer)
             plr.SendMessage(info.ToString(), color);
         else
-            plr.SendMessage(TextGradient(info.ToString()), color);
+            plr.SendMessage(Grad(info.ToString()), color);
     }
     #endregion
 
@@ -1524,7 +1517,7 @@ internal class PoutCmd
         mess.AppendLine($"每次执行前后都会清空《导入存档》文件夹");
 
         if (plr.RealPlayer)
-            plr.SendMessage(TextGradient(mess.ToString()), color);
+            plr.SendMessage(Grad(mess.ToString()), color);
         else
             plr.SendMessage(mess.ToString(), color);
     }
@@ -1545,7 +1538,7 @@ internal class PoutCmd
         mess.AppendLine($"版本:[c/888888:{vsText}]");
 
         if (plr.RealPlayer)
-            plr.SendMessage(TextGradient(mess.ToString()), color);
+            plr.SendMessage(Grad(mess.ToString()), color);
         else
             plr.SendMessage(mess.ToString(), color);
     }
@@ -1582,6 +1575,14 @@ internal class PoutCmd
             return;
         }
 
+        // 检查是否有确认参数
+        if (args.Parameters.Count < 1)
+        {
+            plr.SendMessage(Utils.Grad("《传送指令菜单》"),color);
+            plr.SendMessage(Utils.Grad($"/{pt} tp wg ——微光湖"),color);
+            return;
+        }
+
         switch (args.Parameters[1].ToLower())
         {
             case "微光":
@@ -1615,7 +1616,7 @@ internal class PoutCmd
 
                     if (flag)
                     {
-                        plr.SendMessage(TextGradient($"[{PluginName}] 已传送到[c/F25156:微光]附近([c/E2E4C4:{x2} {y2}])"), color);
+                        plr.SendMessage(Grad($"[{PluginName}] 已传送到[c/F25156:微光]附近([c/E2E4C4:{x2} {y2}])"), color);
                         plr.Teleport(x2 * 16, y2 * 16, 10);
                     }
                 }

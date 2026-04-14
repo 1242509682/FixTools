@@ -132,7 +132,7 @@ internal class BakCmd
             sb.AppendLine($"拥有 {pt}.use 权限可决定结果");
 
         if (plr.RealPlayer)
-            plr.SendMessage(TextGradient(sb.ToString()), color);
+            plr.SendMessage(Grad(sb.ToString()), color);
         else
             plr.SendMessage(sb.ToString(), color);
     }
@@ -276,7 +276,7 @@ internal class BakCmd
         if (plr == TSPlayer.Server)
             plr.SendMessage(mess, color);
 
-        TSPlayer.All.SendMessage(TextGradient(mess), color);
+        TSPlayer.All.SendMessage(Grad(mess), color);
     }
     #endregion
 

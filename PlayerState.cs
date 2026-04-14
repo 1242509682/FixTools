@@ -36,6 +36,11 @@ internal class PlayerState
         // 待保存的建筑名称
         public string rwCopy { get; set; } = string.Empty;
 
+        // 统一的区域操作模式
+        public int rw = 0;          // 操作编号 1清理 2半砖 3方块 4墙壁 5电路 6喷漆 7液体
+        public int rwA1 = 0;        // 参数1
+        public int rwA2 = 0;        // 参数2
+        public int rwA3 = 0;        // 参数3
 
         // 玩家队伍
         public int Team { get; set; } = -1; // 缓存的队伍ID
@@ -43,11 +48,6 @@ internal class PlayerState
         public DateTime? SwitchTime { get; set; } = null; // 记录切换队伍时间
         public Point? NeedTp { get; set; } = null; // 记录是否需要传送
         public DateTime? JoinTime { get; set; } = null; // 记录可以传送的时间点
-
-        // 玩家死亡状态下离开服务器时间
-        public DateTime? DeadTime { get; set; } = null;
-        // 回到死亡点
-        public List<Vector2> BackPos { get; set; } = new();
     }
     #endregion
 

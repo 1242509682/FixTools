@@ -78,7 +78,7 @@ internal static class Rewards
     private static void SendRewMsg(TSPlayer from, TSPlayer to, int id, int stack)
     {
         // 获取物品图标和数量的格式化字符串
-        string itemIcon = ItemIcon(id, stack);
+        string itemIcon = Icon(id, stack);
 
         // 获取双方队伍名称
         var fromTeam = GetTeamCName(from.Team);

@@ -57,7 +57,7 @@ internal class CanCraft
         if (!IsChestInRange(chest, plr)) return Result;
 
         // 5. 箱子在受保护区域内、玩家无权限、且在范围内，阻止合成
-        plr.SendMessage(TextGradient($"[{PluginName}] 箱子在保护区域 [c/FF5149:{firstRegion?.Name}] 中，你无权合成！"), color);
+        plr.SendMessage(Grad($"[{PluginName}] 箱子在保护区域 [c/FF5149:{firstRegion?.Name}] 中，你无权合成！"), color);
 
         return false;
     }

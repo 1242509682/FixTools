@@ -35,10 +35,8 @@ internal class DropBossBags
             if (plr.Dead)
             {
                 plr.RespawnTimer = 0; // 立即复活
-                data.DeadTime = null;
-                DeadLimit.DeadPlayer.Remove(plr);
                 plr.Spawn(PlayerSpawnContext.ReviveFromDeath); // 触发复活
-                plr.SendMessage(TextGradient($"因击败[c/FF5149:{npc.FullName}]正为你自动复活!"), color);
+                plr.SendMessage(Grad($"因击败[c/FF5149:{npc.FullName}]正为你自动复活!"), color);
             }
         }
     }
@@ -48,7 +46,7 @@ internal class DropBossBags
     {
         if (!Config.TpBagEnabled)
         {
-            plr.SendMessage(TextGradient("宝藏袋传送功能未启用!"), color);
+            plr.SendMessage(Grad("宝藏袋传送功能未启用!"), color);
             return;
         }
 
@@ -57,7 +55,7 @@ internal class DropBossBags
         // 检查玩家是否有位置列表
         if (data.BagPos.Count == 0)
         {
-            plr.SendMessage(TextGradient("当前[c/FF5149:没有可用的]宝藏袋位置!"), color);
+            plr.SendMessage(Grad("当前[c/FF5149:没有可用的]宝藏袋位置!"), color);
             return;
         }
 
@@ -71,7 +69,7 @@ internal class DropBossBags
         var mess = data.BagPos.Count > 0 ? $"[{PluginName}] 还有 [c/3FAEDB:{data.BagPos.Count}] 个宝藏袋位置可用" :
                                            $"[{PluginName}] 这是 [c/FF534A:最后一个] 宝藏袋位置";
 
-        plr.SendMessage(TextGradient(mess), color);
+        plr.SendMessage(Grad(mess), color);
     }
     #endregion
 }

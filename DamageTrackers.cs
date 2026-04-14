@@ -116,7 +116,7 @@ internal class DamageTrackers
         // 发送给所有在线玩家
         foreach (var plr in onPlrs)
         {
-            plr.SendMessage(TextGradient(sb.ToString()), color);
+            plr.SendMessage(Grad(sb.ToString()), color);
         }
 
 
@@ -124,7 +124,7 @@ internal class DamageTrackers
         if (Config.TpBagEnabled &&
             Config.AllowTpBagText != null &&
             Config.AllowTpBagText.Count > 0)
-            TSPlayer.All.SendMessage(TextGradient($"发送消息 [c/FF6962:{string.Join(" 或 ", Config.AllowTpBagText)}] 将传送到宝藏袋位置 "), color);
+            TSPlayer.All.SendMessage(Grad($"发送消息 [c/FF6962:{string.Join(" 或 ", Config.AllowTpBagText)}] 将传送到宝藏袋位置 "), color);
     }
     #endregion
 

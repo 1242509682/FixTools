@@ -58,7 +58,7 @@ internal class Utils
     #endregion
 
     #region 渐变着色方法
-    public static string TextGradient(string text, TSPlayer? plr = null)
+    public static string Grad(string text, TSPlayer? plr = null)
     {
         if (string.IsNullOrEmpty(text))
             return text;
@@ -66,7 +66,7 @@ internal class Utils
         text = placeholder(text, plr);
 
         // 检查是否已包含颜色标签
-        if (text.Contains("[c/"))
+        if (text.Contains("[c/") || text.Contains("[i:"))
         {
             // 如果有颜色标签，保留它们并处理其他部分
             return MixedText(text);
@@ -90,7 +90,7 @@ internal class Utils
             text = Regex.Replace(text, @"\{组名\}", plr.Account.Group, RegexOptions.IgnoreCase);
             text = Regex.Replace(text, @"\{账号\}", plr.Account.ID.ToString(), RegexOptions.IgnoreCase);
             text = Regex.Replace(text, @"\{武器类型\}", GetWeapon(plr.SelectedItem), RegexOptions.IgnoreCase);
-            text = Regex.Replace(text, @"\{物品图标\}", ItemIcon(plr.SelectedItem.type), RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{物品图标\}", Icon(plr.SelectedItem.type), RegexOptions.IgnoreCase);
             text = Regex.Replace(text, @"\{物品名\}", Lang.GetItemNameValue(plr.SelectedItem.type), RegexOptions.IgnoreCase);
             text = Regex.Replace(text, @"\{生命\}", plr.TPlayer.statLife.ToString(), RegexOptions.IgnoreCase);
             text = Regex.Replace(text, @"\{生命上限\}", plr.TPlayer.statLifeMax.ToString(), RegexOptions.IgnoreCase);
@@ -454,7 +454,7 @@ internal class Utils
             fileList.AppendLine("示例: /pout copy 1 2   (复制第1个文件到第2个路径)");
 
             if (plr.RealPlayer)
-                plr.SendMessage(TextGradient(fileList.ToString()), color);
+                plr.SendMessage(Grad(fileList.ToString()), color);
             else
                 TShock.Log.ConsoleInfo(fileList.ToString());
         }
@@ -468,13 +468,9 @@ internal class Utils
 
     #region 返回物品图标方法
     // 根据物品ID返回物品图标
-    public static string ItemIcon(ItemID itemID) => ItemIcon(itemID);
-    // 根据物品ID返回物品图标
-    public static string ItemIcon(int itemID) => $"[i:{itemID}]";
-    // 根据物品对象返回物品图标
-    public static string ItemIcon(Item item) => ItemIcon(item.type, item.stack);
+    public static string Icon(int itemID) => $"[i:{itemID}]";
     // 返回带数量的物品图标
-    public static string ItemIcon(int itemID, int stack = 1) => $"[i/s{stack}:{itemID}]";
+    public static string Icon(int itemID, int stack = 1) => $"[i/s{stack}:{itemID}]";
     #endregion
 
     #region 队伍名称映射

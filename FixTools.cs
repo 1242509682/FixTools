@@ -18,7 +18,7 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 3, 12);
+    public override Version Version => new(2026, 4, 14);
     public override string Description => "本插件仅TShock测试版期间维护,指令/pout";
     #endregion
 
@@ -59,7 +59,6 @@ public partial class FixTools : TerrariaPlugin
         TShockAPI.Commands.ChatCommands.Add(new Command(Prem, PoutCmd.Pouts, pt, "pt"));
         TShockAPI.Commands.ChatCommands.Add(new Command(string.Empty, BakCmd.bakCmd, bak));
         TShockAPI.Commands.ChatCommands.Add(new Command(string.Empty, TeamData.tvCmd, "tv"));
-        TShockAPI.Commands.ChatCommands.Add(new Command(string.Empty, DeadLimit.Back, "back"));
     }
 
     protected override void Dispose(bool disposing)
@@ -88,7 +87,6 @@ public partial class FixTools : TerrariaPlugin
             TShockAPI.Commands.ChatCommands.RemoveAll(x =>
             x.CommandDelegate == PoutCmd.Pouts ||
             x.CommandDelegate == BakCmd.bakCmd ||
-            x.CommandDelegate == DeadLimit.Back ||
             x.CommandDelegate == TeamData.tvCmd);
         }
         base.Dispose(disposing);
@@ -131,72 +129,103 @@ public partial class FixTools : TerrariaPlugin
     #region 世界加载完结束事件
     private void GamePost(EventArgs args)
     {
-        Console.WriteLine($"\n----------{PluginName} v{Version}----------");
-
-        Console.WriteLine(string.Empty);
-        Console.WriteLine($"[本插件支持]");
-        TShock.Log.ConsoleInfo($"1.导入导出SSC存档、自动备份存档、禁用区域箱子材料");
-        TShock.Log.ConsoleInfo($"2.智能进服公告、跨版本进服、修复地图区块缺失、boss伤害排行");
-        TShock.Log.ConsoleInfo($"3.批量改权限、导出权限表、复制文件、宝藏袋传送、修复局部图格");
-        TShock.Log.ConsoleInfo($"4.自动注册、自动建GM组、自动配权、进度锁、重置服务器");
-        TShock.Log.ConsoleInfo($"5.修复召唤入侵事件、修复天塔柱刷物品BUG、投票回档");
-        TShock.Log.ConsoleInfo($"6.进服恢复队伍与出生点、投票切换队伍、投票修改队伍出生点");
-        TShock.Log.ConsoleInfo($"指令/{pt} 权限:{pt}.use");
-        TShock.Log.ConsoleInfo($"配置文件路径:{ConfigPath}");
-        Console.WriteLine(string.Empty);
-
-        if (Config.PostCMD.Any())
+        if (Config.ServerLogBc)
         {
-            Console.WriteLine($"[开服执行指令]");
-            PoutCmd.DoCommand(TSPlayer.Server, Config.PostCMD);
+            Console.WriteLine($"\n----------{PluginName} v{Version}----------");
+
             Console.WriteLine(string.Empty);
-        }
-
-        if (Config.AutoFixWorld)
-        {
-            PoutCmd.ExecuteFix(TSPlayer.Server, false);
+            Console.WriteLine($"[本插件支持]");
+            TShock.Log.ConsoleInfo($"1.导入导出SSC存档、自动备份存档、禁用区域箱子材料");
+            TShock.Log.ConsoleInfo($"2.智能进服公告、跨版本进服、修复地图区块缺失、boss伤害排行");
+            TShock.Log.ConsoleInfo($"3.批量改权限、导出权限表、复制文件、宝藏袋传送、修复局部图格");
+            TShock.Log.ConsoleInfo($"4.自动注册、自动建GM组、自动配权、进度锁、重置服务器");
+            TShock.Log.ConsoleInfo($"5.修复召唤入侵事件、修复天塔柱刷物品BUG、投票回档");
+            TShock.Log.ConsoleInfo($"6.进服恢复队伍与出生点、投票切换队伍、投票修改队伍出生点");
+            TShock.Log.ConsoleInfo($"指令/{pt} 权限:{pt}.use");
+            TShock.Log.ConsoleInfo($"配置文件路径:{ConfigPath}");
             Console.WriteLine(string.Empty);
-        }
 
-        if (Config.AutoPerm)
-        {
-            Console.WriteLine($"[自动配权提醒]");
-            PoutCmd.ManagePerm(TSPlayer.Server, true);
-            TShock.Log.ConsoleInfo($"如果不需要可批量移除:/pout del");
-            Console.WriteLine(string.Empty);
-        }
-
-        if (Config.AutoAddGM && !TShock.Groups.GroupExists("GM"))
-        {
-            Console.WriteLine($"[自动建GM组]");
-            TShock.Groups.AddGroup("GM", string.Empty, "*,!tshock.ignore.ssc", "193,223,186");
-            TShock.Log.ConsoleInfo($"已创建GM权限组，请使用角色进入游戏后:");
-            TShock.Log.ConsoleInfo($"在本控制台指定管理:/user group 玩家名 GM");
-            Console.WriteLine(string.Empty);
-        }
-
-        if (Config.AutoRegister)
-        {
-            Console.WriteLine($"[自动注册功能]");
-            var caibot = "CaiBotLitePlugin";
-            var hasCaibot = ServerApi.Plugins.Any(p => p.Plugin.Name == caibot);
-            if (!hasCaibot)
+            if (Config.PostCMD.Any())
             {
-                TShock.Log.ConsoleInfo($"自动注册功能已启用，检测到新玩家将自动注册账号，");
-                TShock.Log.ConsoleInfo($"默认注册密码为: {Config.DefPass}");
-                TShock.Log.ConsoleInfo($"玩家自己改密码: /password {Config.DefPass} 新密码");
-                TShock.Log.ConsoleInfo($"帮玩家修改密码: /user password 玩家名 新密码");
+                Console.WriteLine($"[开服执行指令]");
+                PoutCmd.DoCommand(TSPlayer.Server, Config.PostCMD);
+                Console.WriteLine(string.Empty);
             }
-            else
-            {
-                Config.AutoRegister = false;
-                Config.Write();
-                TShock.Log.ConsoleInfo($"检测到已存在【{caibot}】插件，自动注册功能已禁用");
-            }
-            Console.WriteLine(string.Empty);
-        }
 
-        Console.WriteLine("----------------------------------------------\n");
+            if (Config.AutoFixWorld)
+            {
+                PoutCmd.ExecuteFix(TSPlayer.Server, false);
+                Console.WriteLine(string.Empty);
+            }
+
+            if (Config.AutoPerm)
+            {
+                Console.WriteLine($"[自动配权提醒]");
+                PoutCmd.ManagePerm(TSPlayer.Server, true);
+                TShock.Log.ConsoleInfo($"如果不需要可批量移除:/pout del");
+                Console.WriteLine(string.Empty);
+            }
+
+            if (Config.AutoAddGM && !TShock.Groups.GroupExists("GM"))
+            {
+                Console.WriteLine($"[自动建GM组]");
+                TShock.Groups.AddGroup("GM", string.Empty, "*,!tshock.ignore.ssc", "193,223,186");
+                TShock.Log.ConsoleInfo($"已创建GM权限组，请使用角色进入游戏后:");
+                TShock.Log.ConsoleInfo($"在本控制台指定管理:/user group 玩家名 GM");
+                Console.WriteLine(string.Empty);
+            }
+
+            if (Config.AutoRegister)
+            {
+                Console.WriteLine($"[自动注册功能]");
+                var caibot = "CaiBotLitePlugin";
+                var hasCaibot = ServerApi.Plugins.Any(p => p.Plugin.Name == caibot);
+                if (hasCaibot)
+                {
+                    Config.AutoRegister = false;
+                    Config.Write();
+                    TShock.Log.ConsoleInfo($"检测到已存在【{caibot}】插件，自动注册功能已禁用");
+                }
+                else
+                {
+                    TShock.Log.ConsoleInfo($"自动注册功能已启用，检测到新玩家将自动注册账号，");
+                    TShock.Log.ConsoleInfo($"默认注册密码为: {Config.DefPass}");
+                    TShock.Log.ConsoleInfo($"玩家自己改密码: /password {Config.DefPass} 新密码");
+                    TShock.Log.ConsoleInfo($"帮玩家修改密码: /user password 玩家名 新密码");
+                }
+                Console.WriteLine(string.Empty);
+            }
+
+            Console.WriteLine("----------------------------------------------\n");
+        }
+        else
+        {
+            if (Config.PostCMD.Any())
+                PoutCmd.DoCommand(TSPlayer.Server, Config.PostCMD);
+
+            if (Config.AutoFixWorld)
+            {
+                PoutCmd.ExecuteFix(TSPlayer.Server, false);
+                Console.WriteLine(string.Empty);
+            }
+
+            if (Config.AutoPerm)
+                PoutCmd.ManagePerm(TSPlayer.Server, true);
+
+            if (Config.AutoAddGM && !TShock.Groups.GroupExists("GM"))
+                TShock.Groups.AddGroup("GM", string.Empty, "*,!tshock.ignore.ssc", "193,223,186");
+
+            if (Config.AutoRegister)
+            {
+                var caibot = "CaiBotLitePlugin";
+                var hasCaibot = ServerApi.Plugins.Any(p => p.Plugin.Name == caibot);
+                if (hasCaibot)
+                {
+                    Config.AutoRegister = false;
+                    Config.Write();
+                }
+            }
+        }
     }
     #endregion
 
@@ -241,12 +270,6 @@ public partial class FixTools : TerrariaPlugin
         else
         {
             data.Motd = 1;
-
-            // 修复复活检查,限制死亡状态进服
-            if (Config.FixSapwn)
-            {
-                DeadLimit.LimitJoin(plr, data);
-            }
         }
     }
     #endregion
@@ -254,6 +277,9 @@ public partial class FixTools : TerrariaPlugin
     #region 玩家离开服务器事件
     private void OnServerLeave(LeaveEventArgs args)
     {
+        if (PeList.Contains(args.Who))
+            PeList.Remove(args.Who);
+
         var plr = TShock.Players[args.Who];
         if (plr is null) return;
 
@@ -275,7 +301,7 @@ public partial class FixTools : TerrariaPlugin
         // 如果离开的玩家是申请人，取消申请
         if (BakCmd.curName == plr.Name)
         {
-            TSPlayer.All.SendMessage(TextGradient($"{plr.Name} 已离开,他的个人回档申请已取消"), color);
+            TSPlayer.All.SendMessage(Grad($"{plr.Name} 已离开,他的个人回档申请已取消"), color);
             BakCmd.ClearApply();
         }
     }
@@ -297,8 +323,8 @@ public partial class FixTools : TerrariaPlugin
             Power.SetEnabledState(plr.Index, true);
 
             // 下面2条消息管理自己看不见,其他玩家可以看见(因为事件本身比玩家完全进来触发要早)
-            TSPlayer.All.SendMessage(TextGradient("已为[c/4CB5DE:管理员] {玩家名} 开启无敌模式", plr), color);
-            TSPlayer.All.SendMessage(TextGradient("当前进度:{进度}"), color);
+            TSPlayer.All.SendMessage(Grad("已为[c/4CB5DE:管理员] {玩家名} 开启无敌模式", plr), color);
+            TSPlayer.All.SendMessage(Grad("当前进度:{进度}"), color);
         }
 
         if (Config.TeamMode)
@@ -326,9 +352,15 @@ public partial class FixTools : TerrariaPlugin
         if (Config.MotdEnabled && data.Motd == 1)
         {
             if (Config.MotdMess.Any())
-                plr.SendMessage($"{TextGradient(string.Join("\n", Config.MotdMess), plr: plr)}", color);
+                plr.SendMessage($"{Grad(string.Join("\n", Config.MotdMess), plr: plr)}", color);
 
-            data.Motd = 2;
+            if(Config.PETip)
+            PeText(plr);
+
+            if (Config.MotdMess2Enabled)
+                data.Motd = 2;
+            else
+                data.Motd = 0;
         }
 
         // 注册成功提示
@@ -337,7 +369,7 @@ public partial class FixTools : TerrariaPlugin
             var regText = $"[{PluginName}] 已为您自动注册，默认密码为: {data.DefPass}\n" +
                           $"使用指令修改密码: /password {data.DefPass} 新密码\n";
 
-            plr.SendMessage(TextGradient(regText), color);
+            plr.SendMessage(Grad(regText), color);
             TShock.Log.ConsoleInfo($"[{PluginName}]");
             TShock.Log.ConsoleInfo($"自动为玩家 {plr.Name} 注册账号,密码为 {data.DefPass}");
             TShock.Log.ConsoleInfo($"帮玩家修改密码: /user password {plr.Name} 新密码");
@@ -376,12 +408,6 @@ public partial class FixTools : TerrariaPlugin
         // 队伍模式惩罚
         if (Config.TeamMode)
             TeamData.TeamKillMe(e, plr, data);
-
-        // 修复复活检查
-        if (Config.FixSapwn)
-        {
-            DeadLimit.FixRespawnTimer(plr, data);
-        }
     }
     #endregion
 
@@ -401,12 +427,6 @@ public partial class FixTools : TerrariaPlugin
                 WritePlayer.ExportAll(TSPlayer.Server, WritePlayer.AutoSaveDir);
                 frame = 0;
             }
-        }
-
-        // 未满足复活时间,定时杀死玩家
-        if (Config.FixSapwn)
-        {
-            DeadLimit.DeadTimeUpdate();
         }
 
         // 队伍投票时间检查
@@ -436,7 +456,7 @@ public partial class FixTools : TerrariaPlugin
                 if (remain.TotalSeconds > Config.ApplyTime)
                 {
                     // 发送超时消息
-                    TSPlayer.All.SendMessage(TextGradient($"[{PluginName}] {BakCmd.curName}的回档申请[c/FF5E57:已超时]自动关闭"), color);
+                    TSPlayer.All.SendMessage(Grad($"[{PluginName}] {BakCmd.curName}的回档申请[c/FF5E57:已超时]自动关闭"), color);
 
                     // 清理申请状态
                     BakCmd.ClearApply();
@@ -487,22 +507,22 @@ public partial class FixTools : TerrariaPlugin
         {
             var data = GetData(plr.Name);
 
-            if (data.Motd == 2)
+            if (Config.MotdMess2Enabled && data.Motd == 2)
             {
                 if (Config.MotdMess2.Any())
-                    plr.SendMessage($"{TextGradient(string.Join("\n", Config.MotdMess2), plr: plr)}", color);
+                    plr.SendMessage($"{Grad(string.Join("\n", Config.MotdMess2), plr: plr)}", color);
                 data.Motd = 3;
                 data.SendTime = DateTime.Now;
                 return; // 设置完 motd3 后直接返回，避免后续代码执行
             }
 
-            if (data.Motd == 3)
+            if (Config.MotdMess3Enabled && data.Motd == 3)
             {
                 TimeSpan sendTime = DateTime.Now - data.SendTime;
                 if (sendTime.TotalSeconds > 1)
                 {
                     if (Config.MotdMess3.Any())
-                        plr.SendMessage($"{TextGradient(string.Join("\n", Config.MotdMess3), plr: plr)}", color);
+                        plr.SendMessage($"{Grad(string.Join("\n", Config.MotdMess3), plr: plr)}", color);
 
                     data.Motd = 0;
                     data.SendTime = DateTime.MinValue;
@@ -515,8 +535,10 @@ public partial class FixTools : TerrariaPlugin
     #region 跨版本进服方法
     private void OnNetGetData(GetDataEventArgs args)
     {
-        if (args.MsgID == PacketTypes.ConnectRequest && Config.NoVisualLimit)
+        if (args.MsgID == PacketTypes.ConnectRequest)
         {
+            if (!Config.NoVisualLimit) return;
+
             args.Handled = true;
 
             if (Main.netMode is not 2) return;
@@ -544,6 +566,32 @@ public partial class FixTools : TerrariaPlugin
                     NetMessage.TrySendData(MessageID.RequestPassword, args.Msg.whoAmI);
                 }
             }
+        }
+        else if (args.MsgID == PacketTypes.PlayerPlatformInfo)
+        {
+            // 定位到数据包内容（跳过 PacketId）
+            args.Msg.reader.BaseStream.Position = args.Index;
+            args.Msg.reader.ReadByte(); // 版本号
+            byte platId = args.Msg.reader.ReadByte(); // 平台ID
+            if (platId == 0) PeList.Add(args.Msg.whoAmI);
+        }
+    }
+    #endregion
+
+    #region 判断PE玩家方法
+    private static HashSet<int> PeList = new();  // 存储手游玩家的索引
+    public static void PeText(TSPlayer plr)
+    {
+        if (PeList.Contains(plr.Index))
+        {
+            var mess2 = $"\n[c/FC6F62:注:] 聊天按钮放左边[c/FBA562:背包]UI界面\n" +
+                        "既能显示[c/56DD77:长文本],也能[c/F2F861:开箱]输指令\n" +
+                        "[c/AAAAAA:(仅进服显示1次,后续不再弹出)]\n";
+
+            plr.SendMessage(Grad(mess2), color);
+
+            // 清理PE索引表 确保只提示一次
+            PeList.Remove(plr.Index);
         }
     }
     #endregion
@@ -574,7 +622,6 @@ public partial class FixTools : TerrariaPlugin
             return;
 
         WorldTile.FixSnap(e, plr);
-
     }
     #endregion
 

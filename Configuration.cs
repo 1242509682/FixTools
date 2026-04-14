@@ -17,12 +17,9 @@ internal class Configuration
     public bool RandPass { get; set; } = true;
     [JsonProperty("注册默认密码", Order = -198)]
     public string DefPass { get; set; } = "123456";
-    [JsonProperty("修复复活检查", Order = -197)]
-    public bool FixSapwn { get; set; } = false;
-    [JsonProperty("死亡出服禁止进服", Order = -196)]
-    public bool DeathLimitForJoin { get; set; } = false;
-    [JsonProperty("回到死亡地点", Order = -195)]
-    public bool Back { get; set; } = false;
+
+    [JsonProperty("控制台信息", Order = -197)]
+    public bool ServerLogBc { get; set; } = false;
 
     [JsonProperty("自动备份存档", Order = -170)]
     public bool AutoSavePlayer { get; set; } = true;
@@ -51,7 +48,7 @@ internal class Configuration
     public int MinVotePlayers { get; set; } = 2;
 
     [JsonProperty("导出存档的版本号", Order = -96)]
-    public int GameVersion { get; set; } = 317;
+    public int GameVersion { get; set; } = 319;
     [JsonProperty("版本号对照参考表", Order = -95)]
     public HashSet<string> Example { get; set; } = [];
 
@@ -112,9 +109,15 @@ internal class Configuration
     public bool MotdEnabled { get; set; } = true;
     [JsonProperty("进服公告1", Order = 22)]
     public string[] MotdMess { get; set; } = [];
-    [JsonProperty("进服公告2", Order = 23)]
+    [JsonProperty("PE聊天按钮提醒", Order = 23)]
+    public bool PETip { get; set; } = true;
+    [JsonProperty("启用进服公告2", Order = 24)]
+    public bool MotdMess2Enabled { get; set; } = false;
+    [JsonProperty("进服公告2", Order = 25)]
     public string[] MotdMess2 { get; set; } = [];
-    [JsonProperty("进服公告3", Order = 24)]
+    [JsonProperty("启用进服公告3", Order = 26)]
+    public bool MotdMess3Enabled { get; set; } = false;
+    [JsonProperty("进服公告3", Order = 27)]
     public string[] MotdMess3 { get; set; } = [];
 
     [JsonProperty("复制文件输出路径", Order = 40)]
@@ -150,22 +153,18 @@ internal class Configuration
 
         MotdMess =
         [
-            "\n欢迎 拿着{武器类型}{物品图标}的{玩家名} 来到 {服务器名}",
+            "\n欢迎 {玩家名} 来到 {服务器名}",
             "在线玩家 [c/FFFFFF:({在线人数}/{服务器上限})]: {在线玩家}",
-            $"指令:/{pt} 权限:{Prem}",
-            "配置路径: tshock/[c/FF6962:{插件名}]/配置文件.json",
             "TShock官方Q群:816771079",
-            "所在队伍:{队伍} {同队人数}/{别队人数}",
-            "同队玩家:{同队玩家}",
             "当前进度:{进度}",
-            "---------",
-            "发送[c/FF6962:任意消息]了解本插件相关功能\n",
         ];
 
         MotdMess2 =
         [
             "---------",
             $"《插件支持功能》适配版本:{TShockVS}",
+            $"指令:/{pt} 权限:{Prem}",
+            "配置路径: tshock/[c/FF6962:{插件名}]/配置文件.json",
             "[c/FFFFFF:1.]导入导出SSC存档、自动备份存档、禁用区域箱子材料",
             "[c/FFFFFF:2.]智能进服公告、跨版本进服、修复地图区块缺失、boss伤害排行",
             "[c/FFFFFF:3.]批量改权限、导出权限表、复制文件、宝藏袋传送、修复局部图格",

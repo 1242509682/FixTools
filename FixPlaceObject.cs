@@ -52,7 +52,7 @@ internal class FixPlaceObject
             }
         }
 
-        plr.SendMessage(TextGradient("[{插件名}] 检测到刷物品BUG！正在清理..."), color);
+        plr.SendMessage(Grad("[{插件名}] 检测到刷物品BUG！正在清理..."), color);
     }
     #endregion
 

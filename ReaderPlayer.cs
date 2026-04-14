@@ -79,7 +79,7 @@ public class ReaderPlayer
         }
 
         if (plr.RealPlayer)
-            plr.SendMessage(TextGradient(fileList.ToString()), color);
+            plr.SendMessage(Grad(fileList.ToString()), color);
         else
             TShock.Log.ConsoleInfo(fileList.ToString());
     }
