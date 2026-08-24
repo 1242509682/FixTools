@@ -646,7 +646,7 @@ internal class Utils
             sel.stack--;
 
             if (sel.stack == 0)
-                sel.TurnToAir(true);
+                sel.TurnToAir();
 
             // 移除玩家物品
             plr.SendData(PacketTypes.PlayerSlot, "", plr.Index, plr.TPlayer.selectedItem);

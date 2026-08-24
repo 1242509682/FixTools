@@ -1189,7 +1189,13 @@ internal class PoutCmd
         catch { }
 
         Netplay.SaveOnServerExit = false; //不保存地图
-        Netplay.Disconnect = true; //断开连接
+
+        var field = typeof(Netplay).GetField("Disconnect");
+        if (field != null)
+            field.SetValue(null, true);
+        else
+            TShock.Log.ConsoleWarn("[FixTools] Netplay.Disconnect 字段不存在，已跳过");
+
         TShock.ShuttingDown = true; //关闭服务器
         Environment.Exit(0); //退出程序
     }

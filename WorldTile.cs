@@ -958,7 +958,9 @@ public static class WorldTile
             int w = data.Tiles.GetLength(0);
             int h = data.Tiles.GetLength(1);
             writer.Write(w); writer.Write(h);
-            WriteTiles(writer, data.Tiles); // 压缩写入图格
+            for (int x = 0; x < w; x++)
+                for (int y = 0; y < h; y++)
+                    WriteTile(writer, data.Tiles[x, y]);
         }
 
         // 写入箱子
@@ -1009,7 +1011,9 @@ public static class WorldTile
         if (w > 0 && h > 0)
         {
             data.Tiles = new Tile[w, h];
-            ReadTiles(reader, data.Tiles, w, h); // 解压图格
+            for (int x = 0; x < w; x++)
+                for (int y = 0; y < h; y++)
+                    data.Tiles[x, y] = ReadTile(reader); // 解压图格
         }
 
         int chestCount = reader.ReadInt32();
@@ -1150,369 +1154,111 @@ public static class WorldTile
     }
     #endregion
 
-    #region 压缩图格（使用RLE压缩写入图格二维数组）
+    #region 压缩图格
     /// <summary>
-    /// 使用RLE压缩写入图格二维数组,参考原版NetMessage.CompressTileBlock方法
+    /// 将单个图格写入 BinaryWriter
     /// </summary>
-    private static void WriteTiles(BinaryWriter writer, Tile[,] tiles)
+    private static void WriteTile(BinaryWriter writer, Tile tile)
     {
-        int width = tiles.GetLength(0);
-        int height = tiles.GetLength(1);
+        // 标志位
+        byte flags = 0;
+        if (tile.active()) flags |= 0x01;
+        if (tile.wall != 0) flags |= 0x02;
+        if (tile.liquid != 0) flags |= 0x04;
+        if (tile.wire()) flags |= 0x08;
+        if (tile.wire2()) flags |= 0x10;
+        if (tile.wire3()) flags |= 0x20;
+        if (tile.wire4()) flags |= 0x40;
+        if (tile.actuator()) flags |= 0x80;
+        writer.Write(flags);
 
-        short repeatCount = 0;          // 重复计数器（原版num4）
-        int dataIdx = 4;                 // 数据起始索引（原版num5）
-        int flagStartIdx = 3;            // 标志位起始索引（原版num6）
-        byte flags1 = 0;                 // 第一层标志（原版b）
-        byte[] buffer = new byte[16];    // 缓冲区
-
-        Tile? prevTile = null;             // 前一个图格
-
-        for (int y = 0; y < height; y++)
-            for (int x = 0; x < width; x++)
-            {
-                Tile curTile = tiles[x, y];
-
-                // 如果当前图格与前一个相同且允许批量压缩，则增加计数并跳过
-                if (prevTile != null && curTile.isTheSameAs(prevTile) && TileID.Sets.AllowsSaveCompressionBatching[curTile.type])
-                {
-                    repeatCount++;
-                    continue;
-                }
-
-                // 处理前一个图格的重复计数
-                if (prevTile != null)
-                {
-                    if (repeatCount > 0)
-                    {
-                        buffer[dataIdx] = (byte)(repeatCount & 0xFF);
-                        dataIdx++;
-                        if (repeatCount > 255)
-                        {
-                            flags1 |= 0x80; // 设置高位标志
-                            buffer[dataIdx] = (byte)((repeatCount >> 8) & 0xFF);
-                            dataIdx++;
-                        }
-                        else
-                        {
-                            flags1 |= 0x40;
-                        }
-                    }
-
-                    // 写入前一个图格的数据（标志位+内容）
-                    buffer[flagStartIdx] = flags1;
-                    writer.Write(buffer, flagStartIdx, dataIdx - flagStartIdx);
-
-                    repeatCount = 0;
-                }
-
-                // 开始处理当前图格
-                dataIdx = 4;
-                byte flags1cur = 0, flags2cur = 0, flags3cur = 0, flags4cur = 0; // 对应原版b, b4, b3, b2
-
-                // 检查活动块
-                if (curTile.active())
-                {
-                    flags1cur |= 2;
-                    buffer[dataIdx] = (byte)curTile.type;
-                    dataIdx++;
-                    if (curTile.type > 255)
-                    {
-                        buffer[dataIdx] = (byte)(curTile.type >> 8);
-                        dataIdx++;
-                        flags1cur |= 0x20;
-                    }
-
-                    // 原版在这里会检查箱子/标牌/实体，直接跳过
-
-                    // 写入帧数据（如果图格重要）
-                    if (Main.tileFrameImportant[curTile.type])
-                    {
-                        buffer[dataIdx] = (byte)(curTile.frameX & 0xFF);
-                        dataIdx++;
-                        buffer[dataIdx] = (byte)((curTile.frameX >> 8) & 0xFF);
-                        dataIdx++;
-                        buffer[dataIdx] = (byte)(curTile.frameY & 0xFF);
-                        dataIdx++;
-                        buffer[dataIdx] = (byte)((curTile.frameY >> 8) & 0xFF);
-                        dataIdx++;
-                    }
-
-                    // 块颜色
-                    if (curTile.color() != 0)
-                    {
-                        flags3cur |= 8;
-                        buffer[dataIdx] = curTile.color();
-                        dataIdx++;
-                    }
-                }
-
-                // 墙体
-                if (curTile.wall != 0)
-                {
-                    flags1cur |= 4;
-                    buffer[dataIdx] = (byte)curTile.wall;
-                    dataIdx++;
-                    if (curTile.wallColor() != 0)
-                    {
-                        flags3cur |= 0x10;
-                        buffer[dataIdx] = curTile.wallColor();
-                        dataIdx++;
-                    }
-                }
-
-                // 液体
-                if (curTile.liquid != 0)
-                {
-                    if (!curTile.shimmer())
-                    {
-                        if (curTile.lava())
-                            flags1cur |= 0x10;
-                        else if (curTile.honey())
-                            flags1cur |= 0x18;
-                        else
-                            flags1cur |= 0x08;
-                    }
-                    else
-                    {
-                        flags3cur |= 0x80;
-                        flags1cur |= 0x08;
-                    }
-                    buffer[dataIdx] = curTile.liquid;
-                    dataIdx++;
-                }
-
-                // 电线
-                if (curTile.wire()) flags4cur |= 2;
-                if (curTile.wire2()) flags4cur |= 4;
-                if (curTile.wire3()) flags4cur |= 8;
-
-                // 半砖/斜坡
-                int slopeFlag = curTile.halfBrick() ? 16 : (curTile.slope() != 0 ? (curTile.slope() + 1) << 4 : 0);
-                flags4cur |= (byte)slopeFlag;
-
-                // 制动器
-                if (curTile.actuator()) flags3cur |= 2;
-                if (curTile.inActive()) flags3cur |= 4;
-                if (curTile.wire4()) flags3cur |= 0x20;
-
-                // 墙体类型大于255
-                if (curTile.wall > 255)
-                {
-                    buffer[dataIdx] = (byte)(curTile.wall >> 8);
-                    dataIdx++;
-                    flags3cur |= 0x40;
-                }
-
-                // 隐形/全亮
-                if (curTile.invisibleBlock()) flags2cur |= 2;
-                if (curTile.invisibleWall()) flags2cur |= 4;
-                if (curTile.fullbrightBlock()) flags2cur |= 8;
-                if (curTile.fullbrightWall()) flags2cur |= 0x10;
-
-                // 组装标志位链（从后往前）
-                flagStartIdx = 3;
-                if (flags2cur != 0)
-                {
-                    flags3cur |= 1; // 标记存在flags2
-                    buffer[flagStartIdx] = flags2cur;
-                    flagStartIdx--;
-                }
-                if (flags3cur != 0)
-                {
-                    flags4cur |= 1; // 标记存在flags3
-                    buffer[flagStartIdx] = flags3cur;
-                    flagStartIdx--;
-                }
-                if (flags4cur != 0)
-                {
-                    flags1cur |= 1; // 标记存在flags4
-                    buffer[flagStartIdx] = flags4cur;
-                    flagStartIdx--;
-                }
-                // 将flags1放入最终位置
-                buffer[flagStartIdx] = flags1cur;
-
-                prevTile = curTile;
-                flags1 = flags1cur; // 保存用于后续重复计数写入
-            }
-
-
-        // 处理最后一组
-        if (prevTile != null)
+        if (tile.active())
         {
-            if (repeatCount > 0)
-            {
-                buffer[dataIdx] = (byte)(repeatCount & 0xFF);
-                dataIdx++;
-                if (repeatCount > 255)
-                {
-                    flags1 |= 0x80;
-                    buffer[dataIdx] = (byte)((repeatCount >> 8) & 0xFF);
-                    dataIdx++;
-                }
-                else
-                {
-                    flags1 |= 0x40;
-                }
-            }
-
-            buffer[flagStartIdx] = flags1;
-            writer.Write(buffer, flagStartIdx, dataIdx - flagStartIdx);
+            writer.Write(tile.type);
+            writer.Write(tile.frameX);
+            writer.Write(tile.frameY);
+            writer.Write(tile.color());
+            writer.Write(tile.inActive());
+            writer.Write(tile.invisibleBlock());
+            writer.Write(tile.fullbrightBlock());
         }
+
+        if (tile.wall != 0)
+        {
+            writer.Write(tile.wall);
+            writer.Write(tile.wallColor());
+            writer.Write(tile.invisibleWall());
+            writer.Write(tile.fullbrightWall());
+        }
+
+        if (tile.liquid != 0)
+        {
+            writer.Write(tile.liquid);
+            writer.Write((byte)tile.liquidType()); // 0水1岩浆2蜂蜜3微光
+        }
+
+        // 斜坡/半砖
+        byte slope = tile.slope();
+        bool half = tile.halfBrick();
+        if (slope != 0)
+            writer.Write(slope);
+        else if (half)
+            writer.Write((byte)4);
+        else
+            writer.Write((byte)0);
     }
 
     /// <summary>
-    /// 解压缩图格到目标二维数组,参考原版NetMessage.DecompressTileBlock方法
+    /// 从 BinaryReader 读取并还原单个图格
     /// </summary>
-    private static void ReadTiles(BinaryReader reader, Tile[,] tiles, int width, int height)
+    private static Tile ReadTile(BinaryReader reader)
     {
-        int repeat = 0;
-        Tile? prevTile = null;
+        Tile tile = new Tile();
+        byte flags = reader.ReadByte();
 
-        for (int y = 0; y < height; y++)
-            for (int x = 0; x < width; x++)
-            {
-                if (repeat > 0)
-                {
-                    // 重复前一个图格
-                    repeat--;
-                    if (tiles[x, y] == null)
-                        tiles[x, y] = new Tile(prevTile);
-                    else
-                        tiles[x, y].CopyFrom(prevTile);
-                    continue;
-                }
+        if ((flags & 0x01) != 0)
+        {
+            tile.active(true);
+            tile.type = reader.ReadUInt16();
+            tile.frameX = reader.ReadInt16();
+            tile.frameY = reader.ReadInt16();
+            tile.color(reader.ReadByte());
+            tile.inActive(reader.ReadBoolean());
+            tile.invisibleBlock(reader.ReadBoolean());
+            tile.fullbrightBlock(reader.ReadBoolean());
+        }
 
-                // 读取标志位
-                byte flags1 = reader.ReadByte();
-                bool hasFlags4 = (flags1 & 1) == 1;
-                byte flags4 = 0;
-                if (hasFlags4)
-                    flags4 = reader.ReadByte();
+        if ((flags & 0x02) != 0)
+        {
+            tile.wall = reader.ReadUInt16();
+            tile.wallColor(reader.ReadByte());
+            tile.invisibleWall(reader.ReadBoolean());
+            tile.fullbrightWall(reader.ReadBoolean());
+        }
 
-                bool hasFlags3 = hasFlags4 && (flags4 & 1) == 1;
-                byte flags3 = 0;
-                if (hasFlags3)
-                    flags3 = reader.ReadByte();
+        if ((flags & 0x04) != 0)
+        {
+            tile.liquid = reader.ReadByte();
+            byte liqType = reader.ReadByte();
+            if (liqType == 0) tile.liquidType(0);
+            else if (liqType == 1) tile.lava(true);
+            else if (liqType == 2) tile.honey(true);
+            else if (liqType == 3) tile.shimmer(true);
+        }
 
-                bool hasFlags2 = hasFlags3 && (flags3 & 1) == 1;
-                byte flags2 = 0;
-                if (hasFlags2)
-                    flags2 = reader.ReadByte();
+        if ((flags & 0x08) != 0) tile.wire(true);
+        if ((flags & 0x10) != 0) tile.wire2(true);
+        if ((flags & 0x20) != 0) tile.wire3(true);
+        if ((flags & 0x40) != 0) tile.wire4(true);
+        if ((flags & 0x80) != 0) tile.actuator(true);
 
-                // 创建当前图格
-                Tile curTile = tiles[x, y];
-                if (curTile == null)
-                {
-                    curTile = new Tile();
-                    tiles[x, y] = curTile;
-                }
-                else
-                {
-                    curTile.ClearEverything();
-                }
+        byte slopeFlag = reader.ReadByte();
+        if (slopeFlag == 4)
+            tile.halfBrick(true);
+        else if (slopeFlag > 0 && slopeFlag < 4)
+            tile.slope(slopeFlag);
 
-                // 解析活动块
-                if ((flags1 & 2) == 2)
-                {
-                    curTile.active(true);
-                    ushort type;
-                    if ((flags1 & 0x20) == 0x20)
-                    {
-                        byte low = reader.ReadByte();
-                        byte high = reader.ReadByte();
-                        type = (ushort)((high << 8) | low);
-                    }
-                    else
-                    {
-                        type = reader.ReadByte();
-                    }
-                    curTile.type = type;
-
-                    if (Main.tileFrameImportant[type])
-                    {
-                        curTile.frameX = reader.ReadInt16();
-                        curTile.frameY = reader.ReadInt16();
-                    }
-                    else
-                    {
-                        curTile.frameX = -1;
-                        curTile.frameY = -1;
-                    }
-
-                    if ((flags3 & 8) == 8)
-                        curTile.color(reader.ReadByte());
-                }
-
-                // 墙体
-                if ((flags1 & 4) == 4)
-                {
-                    curTile.wall = reader.ReadByte();
-                    if ((flags3 & 0x10) == 0x10)
-                        curTile.wallColor(reader.ReadByte());
-                }
-
-                // 液体
-                byte liquidType = (byte)((flags1 & 0x18) >> 3);
-                if (liquidType != 0)
-                {
-                    curTile.liquid = reader.ReadByte();
-                    if ((flags3 & 0x80) == 0x80)
-                        curTile.shimmer(true);
-                    else if (liquidType == 2)
-                        curTile.lava(true);
-                    else if (liquidType == 3)
-                        curTile.honey(true);
-                }
-
-                // 电线、斜坡等（flags4）
-                if (hasFlags4)
-                {
-                    if ((flags4 & 2) == 2) curTile.wire(true);
-                    if ((flags4 & 4) == 4) curTile.wire2(true);
-                    if ((flags4 & 8) == 8) curTile.wire3(true);
-                    byte slope = (byte)((flags4 & 0x70) >> 4);
-                    if (slope != 0 && Main.tileSolid[curTile.type])
-                    {
-                        if (slope == 1)
-                            curTile.halfBrick(true);
-                        else
-                            curTile.slope((byte)(slope - 1));
-                    }
-                }
-
-                // 制动器、隐形等（flags3）
-                if (hasFlags3)
-                {
-                    if ((flags3 & 2) == 2) curTile.actuator(true);
-                    if ((flags3 & 4) == 4) curTile.inActive(true);
-                    if ((flags3 & 0x20) == 0x20) curTile.wire4(true);
-                    if ((flags3 & 0x40) == 0x40)
-                    {
-                        byte highWall = reader.ReadByte();
-                        curTile.wall = (ushort)((highWall << 8) | curTile.wall);
-                    }
-                }
-
-                // 隐形/全亮（flags2）
-                if (hasFlags2)
-                {
-                    if ((flags2 & 2) == 2) curTile.invisibleBlock(true);
-                    if ((flags2 & 4) == 4) curTile.invisibleWall(true);
-                    if ((flags2 & 8) == 8) curTile.fullbrightBlock(true);
-                    if ((flags2 & 0x10) == 0x10) curTile.fullbrightWall(true);
-                }
-
-                // 读取重复计数
-                repeat = (flags1 & 0xC0) switch
-                {
-                    0x40 => reader.ReadByte(),
-                    0x80 => reader.ReadInt16(),
-                    _ => 0
-                };
-
-                prevTile = curTile;
-            }
+        return tile;
     }
     #endregion
 
