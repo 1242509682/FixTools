@@ -18,7 +18,7 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 8, 24);
+    public override Version Version => new(2026, 8, 30);
     public override string Description => "本插件涵盖超级多功能,指令:/pt";
     #endregion
 
@@ -239,8 +239,8 @@ public partial class FixTools : TerrariaPlugin
         var data = GetData(plr.Name);
         if (user is null)
         {
-            // 如果有Caibot则返回
-            var hasCaibot = ServerApi.Plugins.Any(p => p.Plugin.Name == "CaiBotLitePlugin");
+            // 如果有Caibot 或 假人插件则返回
+            var hasCaibot = ServerApi.Plugins.Any(p => p.Plugin.Name == "CaiBotLitePlugin" || p.Plugin.Name == "假人插件");
             if (!Config.AutoRegister || hasCaibot) return;
 
             // 如果开启随机密码则应用随机,否则使用默认密码
