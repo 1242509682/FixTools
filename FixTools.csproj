@@ -13,10 +13,10 @@
 
   <ItemGroup>
     <Reference Include="TerrariaServer">
-      <HintPath>C:\Users\羽学\Desktop\测试服\bin\TerrariaServer.dll</HintPath>
+      <HintPath>using\TerrariaServer.dll</HintPath>
     </Reference>
     <Reference Include="TShockAPI">
-      <HintPath>C:\Users\羽学\Desktop\测试服\ServerPlugins\TShockAPI.dll</HintPath>
+      <HintPath>using\TShockAPI.dll</HintPath>
     </Reference>
   </ItemGroup>
 
