@@ -1,7 +1,9 @@
 ﻿using System.Text;
 using DeathEvent;
 using Terraria;
+using Terraria.GameContent;
 using Terraria.ID;
+using Terraria.IO;
 using TerrariaApi.Server;
 using TShockAPI;
 using TShockAPI.DB;
@@ -821,7 +823,7 @@ internal class PoutCmd
                 {
                     if (IsFileLocked(f))
                     {
-                        TShock.Log.ConsoleWarn($"文件 {f} 正在被使用，跳过删除");
+                        TShock.Log.ConsoleInfo($"文件 {f} 正在被使用，跳过删除");
                         continue; // 跳过正在使用的文件
                     }
                     File.Delete(f);
@@ -849,7 +851,7 @@ internal class PoutCmd
                             {
                                 if (IsFileLocked(info.FullName))
                                 {
-                                    TShock.Log.ConsoleWarn($"文件 {info.Name} 正在被使用，跳过删除");
+                                    TShock.Log.ConsoleInfo($"文件 {info.Name} 正在被使用，跳过删除");
                                     continue; // 跳过正在使用的文件
                                 }
 
@@ -1255,7 +1257,7 @@ internal class PoutCmd
         }
 
         TShock.Utils.Broadcast($"[{PluginName}] 服务器即将[c/DC143C:开始重置]...", color);
-        for (var i = 10; i >= 0; i--)
+        for (var i = 5; i >= 0; i--)
         {
             TShock.Utils.Broadcast(string.Format($"[{PluginName}] {i}秒后关闭服务器..."), color2);
             Thread.Sleep(1000);
@@ -1275,8 +1277,18 @@ internal class PoutCmd
         Config.UnLockNpc.Clear();
         Config.Write();
 
+        // 清除缓存的世界元数据 确保完成删除地图
+        Main.WorldFileMetadata.Type = FileType.World;
+        Main.WorldFileMetadata = null;
+        // 回到主菜单
+        Main.gameMenu = true;
+        // 状态菜单
+        Main.menuMode = MenuID.Status;
+
         DeleteFile(plr); // 删除文件含地图
-        RandomCopyMap(plr);
+
+        Thread.Sleep(500);  // 等待0.5秒
+        RandomCopyMap(plr); // 随机复制启动地图
         DoCommand(plr, Config.AfterCMD); // 执行关服指令 让自动重启启动项创建新地图 重启也能清空TS程序内存
     }
     #endregion

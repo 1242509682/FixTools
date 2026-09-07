@@ -237,8 +237,8 @@ internal class Configuration
         [
             "/spi reset",
             "/det reset all",
-            "/cb on",
-            "/cb zip",
+            "/cb rs",
+            "/rsw rs",
             "/gift rs",
             "/clall",
             "/mw reset",
