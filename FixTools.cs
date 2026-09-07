@@ -27,7 +27,7 @@ public partial class FixTools : TerrariaPlugin
     public static string pt => "pout"; // 主指令名称
     public static string Prem => $"{pt}.use"; // 管理权限
     public static string bak => "bak"; // 投票指令名
-    public static string TShockVS => "6.1.0" + " Action 2556"; // 适配版本号
+    public static string TShockVS => "6.1.0" + " Action 2557"; // 适配版本号
     public static readonly string MainPath = Path.Combine(TShock.SavePath, PluginName); // 主文件夹路径
     public static readonly string ConfigPath = Path.Combine(MainPath, "配置文件.json"); // 配置文件路径
     #endregion

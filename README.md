@@ -55,9 +55,19 @@
 ## 更新日志
 
 ```
-v20260907 ——1.2.4
-适配TShock 官方测试版 Action #2556
+v20260907 ——1.2.4B2
+适配TShock 官方测试版 Action #2557
+
+v20260830 ——1.2.4B1
 适配Terraria 1.4.5.8 与 假人插件v1.0.6
+
+v20260824 ——1.2.3B2
+兼容Hufang发布的1458测试版TShock：
+https://github.com/hufang360/iTShock/releases
+
+v20260822 ——1.2.3B1
+兼容Hufang发布的1457测试版TShock：
+https://github.com/hufang360/iTShock/releases
 
 v20260415 ——1.2.3
 将范围图格编辑指令: /pt rw t => 改为 /pt t (不需要 rw 参数)
