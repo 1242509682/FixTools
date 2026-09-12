@@ -18,7 +18,7 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 9, 8);
+    public override Version Version => new(2026, 9, 12);
     public override string Description => "本插件涵盖超级多功能,指令:/pt";
     #endregion
 
