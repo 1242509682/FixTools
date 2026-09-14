@@ -18,7 +18,7 @@ public partial class FixTools : TerrariaPlugin
     #region 插件信息
     public override string Name => PluginName;
     public override string Author => "羽学";
-    public override Version Version => new(2026, 9, 12);
+    public override Version Version => new(2026, 9, 14);
     public override string Description => "本插件涵盖超级多功能,指令:/pt";
     #endregion
 
@@ -127,8 +127,13 @@ public partial class FixTools : TerrariaPlugin
     #endregion
 
     #region 世界加载完结束事件
+    public static bool IsResetting = false; // 标记是否正在重置服务器
     private void GamePost(EventArgs args)
     {
+        // 标记重置服务器状态为false，避免在服务器启动时误判
+        if (IsResetting)
+            IsResetting = false;
+
         if (Config.ServerLogBc)
         {
             Console.WriteLine($"\n----------{PluginName} v{Version}----------");
@@ -234,6 +239,13 @@ public partial class FixTools : TerrariaPlugin
     {
         var plr = TShock.Players[args.Who];
         if (plr is null) return;
+
+        // 检测服务器是否正在重置并踢出玩家
+        if (IsResetting)
+        {
+            plr.Disconnect($"服务器正在重置中禁止加入");
+            return;
+        }
 
         var user = TShock.UserAccounts.GetUserAccountByName(plr.Name);
         var data = GetData(plr.Name);
@@ -354,8 +366,8 @@ public partial class FixTools : TerrariaPlugin
             if (Config.MotdMess.Any())
                 plr.SendMessage($"{Grad(string.Join("\n", Config.MotdMess), plr: plr)}", color);
 
-            if(Config.PETip)
-            PeText(plr);
+            if (Config.PETip)
+                PeText(plr);
 
             if (Config.MotdMess2Enabled)
                 data.Motd = 2;

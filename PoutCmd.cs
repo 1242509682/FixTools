@@ -1269,6 +1269,15 @@ internal class PoutCmd
             p?.Kick($"{PluginName} 服务器已开始重置...", true, true);
         });
 
+        // 踢完人等待0.5秒确保所有玩家数据保存完成
+        Thread.Sleep(500);
+
+        // 服务器还有人则返回
+        if (TShock.Utils.GetActivePlayerCount() != 0) return;
+
+        // 标记正在重置服务器，在玩家加入事件中阻止玩家加入（世界加载完成自动关闭标志）
+        IsResetting = true;
+
         WritePlayer.ExportAll(plr, WritePlayer.WriteDir);
         DoCommand(plr, Config.BeforeCMD);
         ClearSql(plr);
